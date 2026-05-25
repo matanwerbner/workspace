@@ -1,0 +1,137 @@
+:root {
+  --bg: #faf9f7;
+  --fg: #1e1e1e;
+  --muted: #6b7280;
+  --accent: #4f46e5;
+  --border: #e5e7eb;
+  --danger: #dc2626;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.app {
+  max-width: 560px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.new-task {
+  display: flex;
+  gap: 8px;
+  margin: 24px 0 16px;
+}
+
+.new-task input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.new-task button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.new-task button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-bar button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.filter-bar button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-item.done span {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.task-item label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  cursor: pointer;
+}
+
+.btn-icon {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 4px 8px;
+}
+
+.btn-icon:hover {
+  color: var(--danger);
+}
+
+.error {
+  background: #fee;
+  color: var(--danger);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.empty {
+  padding: 32px 0;
+  text-align: center;
+}

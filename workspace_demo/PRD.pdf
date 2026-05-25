@@ -1,0 +1,320 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 5 /Kids [6 0 R 8 0 R 10 0 R 12 0 R 14 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Length 836 >>
+stream
+BT
+/F2 16 Tf
+72 720 Td
+(Tasklet  Product Requirements Document) Tj
+ET
+BT
+/F1 11 Tf
+72 688 Td
+(Version 0.1   |   Author: Product   |   Status: Draft) Tj
+ET
+BT
+/F1 11 Tf
+72 656 Td
+(Tasklet is a single-user task tracking app intended to demo the) Tj
+0 -16 Td
+(WorkspaceAI shell. It is intentionally minimal: a list of tasks) Tj
+0 -16 Td
+(with add, complete, and delete operations, plus filtering by) Tj
+0 -16 Td
+(completion state. The aim is to be small enough to read end to) Tj
+0 -16 Td
+(end in a single sitting, but realistic enough that a viewer can) Tj
+0 -16 Td
+(imagine extending it.) Tj
+ET
+BT
+/F1 11 Tf
+72 544 Td
+(This document captures the goals, requirements, and milestones) Tj
+0 -16 Td
+(for the first cut. It is the source of truth for what version) Tj
+0 -16 Td
+(0.1 must do. Future versions will live in their own PRDs.) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 5 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+7 0 obj
+<< /Length 706 >>
+stream
+BT
+/F2 16 Tf
+72 720 Td
+(1. Goals and Non-Goals) Tj
+ET
+BT
+/F1 11 Tf
+72 688 Td
+(Goals) Tj
+ET
+BT
+/F1 11 Tf
+72 656 Td
+(- Demonstrate end-to-end CRUD through a small typed API.) Tj
+0 -16 Td
+(- Provide a recognizable UX \(todo-app shape\) so reviewers can) Tj
+0 -16 Td
+(  evaluate code quality without learning a new product first.) Tj
+0 -16 Td
+(- Keep the codebase under ~500 lines so it fits comfortably in) Tj
+0 -16 Td
+(  a review session.) Tj
+ET
+BT
+/F1 11 Tf
+72 560 Td
+(Non-goals) Tj
+ET
+BT
+/F1 11 Tf
+72 528 Td
+(- Authentication, multi-user support, or sharing.) Tj
+0 -16 Td
+(- Persistence beyond process lifetime. The store is in-memory.) Tj
+0 -16 Td
+(- Mobile-specific layouts. Desktop browsers only.) Tj
+ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 7 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+9 0 obj
+<< /Length 1327 >>
+stream
+BT
+/F2 16 Tf
+72 720 Td
+(2. Functional Requirements) Tj
+ET
+BT
+/F1 11 Tf
+72 688 Td
+(F1. List tasks) Tj
+ET
+BT
+/F1 11 Tf
+72 656 Td
+(The home screen displays all tasks in creation order. Each row) Tj
+0 -16 Td
+(shows the title, a completion checkbox, and a delete button.) Tj
+0 -16 Td
+(Completed tasks render with a strikethrough.) Tj
+ET
+BT
+/F1 11 Tf
+72 592 Td
+(F2. Create task) Tj
+ET
+BT
+/F1 11 Tf
+72 560 Td
+(A single-line input above the list accepts a task title. Empty) Tj
+0 -16 Td
+(titles are rejected. On submit, the task is appended and the) Tj
+0 -16 Td
+(input is cleared. The API returns the created task and the UI) Tj
+0 -16 Td
+(inserts it without a refetch.) Tj
+ET
+BT
+/F1 11 Tf
+72 480 Td
+(F3. Toggle completion) Tj
+ET
+BT
+/F1 11 Tf
+72 448 Td
+(Clicking the checkbox toggles the completed flag on the server) Tj
+0 -16 Td
+(and updates the row in place. Failure surfaces an inline error.) Tj
+ET
+BT
+/F1 11 Tf
+72 400 Td
+(F4. Delete task) Tj
+ET
+BT
+/F1 11 Tf
+72 368 Td
+(Clicking the delete button removes the task immediately. There) Tj
+0 -16 Td
+(is no undo in v0.1.) Tj
+ET
+BT
+/F1 11 Tf
+72 320 Td
+(F5. Filter by status) Tj
+ET
+BT
+/F1 11 Tf
+72 288 Td
+(Three tabs above the list  All, Active, Done  restrict which) Tj
+0 -16 Td
+(tasks are shown. The selection is local UI state; it does not) Tj
+0 -16 Td
+(persist across reloads.) Tj
+ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 9 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+11 0 obj
+<< /Length 855 >>
+stream
+BT
+/F2 16 Tf
+72 720 Td
+(3. Non-Functional Requirements) Tj
+ET
+BT
+/F1 11 Tf
+72 688 Td
+(Performance) Tj
+ET
+BT
+/F1 11 Tf
+72 656 Td
+(All operations complete in under 100 ms on localhost. The UI) Tj
+0 -16 Td
+(never blocks on a network call longer than 500 ms without a) Tj
+0 -16 Td
+(loading indicator.) Tj
+ET
+BT
+/F1 11 Tf
+72 592 Td
+(Reliability) Tj
+ET
+BT
+/F1 11 Tf
+72 560 Td
+(API errors are caught and shown inline. The frontend never) Tj
+0 -16 Td
+(leaves the user in an empty broken state  at minimum, the) Tj
+0 -16 Td
+(last-known good list is rendered with an error banner.) Tj
+ET
+BT
+/F1 11 Tf
+72 496 Td
+(Code quality) Tj
+ET
+BT
+/F1 11 Tf
+72 464 Td
+(TypeScript strict mode is on for both projects. There are no) Tj
+0 -16 Td
+(any types. Components are < 100 lines each. The backend has) Tj
+0 -16 Td
+(no global mutable state outside the in-memory store.) Tj
+ET
+endstream
+endobj
+12 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 11 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+13 0 obj
+<< /Length 836 >>
+stream
+BT
+/F2 16 Tf
+72 720 Td
+(4. Milestones) Tj
+ET
+BT
+/F1 11 Tf
+72 688 Td
+(M1  API skeleton) Tj
+ET
+BT
+/F1 11 Tf
+72 656 Td
+(Express app with health and tasks routes, in-memory store, and) Tj
+0 -16 Td
+(request logging. Manually verified with curl.) Tj
+ET
+BT
+/F1 11 Tf
+72 608 Td
+(M2  UI skeleton) Tj
+ET
+BT
+/F1 11 Tf
+72 576 Td
+(React app with the three components: NewTaskForm, FilterBar,) Tj
+0 -16 Td
+(TaskList. Wired to the backend via a small fetch wrapper.) Tj
+ET
+BT
+/F1 11 Tf
+72 528 Td
+(M3  Polish) Tj
+ET
+BT
+/F1 11 Tf
+72 496 Td
+(Error states, empty states, basic styling, README updates. At) Tj
+0 -16 Td
+(this point the demo is ready to show.) Tj
+ET
+BT
+/F1 11 Tf
+72 448 Td
+(Out of scope for v0.1) Tj
+ET
+BT
+/F1 11 Tf
+72 416 Td
+(Drag-to-reorder, due dates, tags, search, keyboard shortcuts,) Tj
+0 -16 Td
+(a real database, deployment.) Tj
+ET
+endstream
+endobj
+14 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 13 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+xref
+0 15
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000148 00000 n 
+0000000218 00000 n 
+0000000293 00000 n 
+0000001180 00000 n 
+0000001316 00000 n 
+0000002073 00000 n 
+0000002209 00000 n 
+0000003588 00000 n 
+0000003725 00000 n 
+0000004632 00000 n 
+0000004770 00000 n 
+0000005658 00000 n 
+trailer
+<< /Size 15 /Root 1 0 R >>
+startxref
+5796
+%%EOF
