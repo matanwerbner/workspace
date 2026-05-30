@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { normalizeUrl } from '../../lib/url';
+import { useAppStore } from '../../state/store';
 import type { ViewInstance } from '../types';
 import type { BrowserViewConfig } from './types';
+import { browserHandles } from './handles';
+
+export { normalizeUrl };
 
 interface WebviewElement extends HTMLElement {
   src: string;
@@ -12,24 +17,20 @@ interface WebviewElement extends HTMLElement {
   stop: () => void;
   loadURL: (url: string) => Promise<void>;
   getURL: () => string;
-}
-
-export function normalizeUrl(input: string): string {
-  const trimmed = input.trim();
-  if (!trimmed) return trimmed;
-  if (/^https?:\/\//i.test(trimmed) || /^file:\/\//i.test(trimmed)) return trimmed;
-  if (/^[^\s]+\.[^\s]+$/.test(trimmed)) return `https://${trimmed}`;
-  return `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
+  executeJavaScript: (code: string) => Promise<unknown>;
 }
 
 export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewConfig> }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const webviewRef = useRef<WebviewElement | null>(null);
   const [addressInput, setAddressInput] = useState(instance.config.initialUrl);
+  const setViewContext = useAppStore((s) => s.setViewContext);
   const [loading, setLoading] = useState(false);
   const [canBack, setCanBack] = useState(false);
   const [canForward, setCanForward] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Stable handle to the current navigate fn so the AI handle can call it.
+  const navigateRef = useRef<(raw: string) => void>(() => {});
 
   // Mount the <webview> imperatively. React's JSX path for custom elements
   // can re-create the node on re-render, which restarts navigation; doing it
@@ -39,6 +40,7 @@ export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewCo
     if (!container) return;
 
     const wv = document.createElement('webview') as WebviewElement;
+    wv.setAttribute('partition', 'persist:browserviews');
     wv.setAttribute('src', instance.config.initialUrl);
     wv.setAttribute('allowpopups', 'true');
     wv.style.display = 'inline-flex';
@@ -46,6 +48,36 @@ export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewCo
     wv.style.height = '100%';
     container.appendChild(wv);
     webviewRef.current = wv;
+
+    setViewContext(instance.id, `Current page: ${instance.config.initialUrl}`);
+
+    // Register an imperative handle the AI tools can drive while mounted.
+    browserHandles.set(instance.id, {
+      navigate: (url: string) => navigateRef.current(url),
+      getUrl: () => {
+        try {
+          return wv.getURL();
+        } catch {
+          return '';
+        }
+      },
+      getPageText: async () =>
+        String((await wv.executeJavaScript('document.body.innerText')) ?? ''),
+      click: async (selector: string) => {
+        const js = `(() => { const el = document.querySelector(${JSON.stringify(
+          selector,
+        )}); if (!el) throw new Error('No element matches selector'); el.click(); return true; })()`;
+        await wv.executeJavaScript(js);
+      },
+      fill: async (selector: string, value: string) => {
+        const js = `(() => { const el = document.querySelector(${JSON.stringify(
+          selector,
+        )}); if (!el) throw new Error('No element matches selector'); el.value = ${JSON.stringify(
+          value,
+        )}; el.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`;
+        await wv.executeJavaScript(js);
+      },
+    });
 
     const onStartLoading = () => {
       setLoading(true);
@@ -62,7 +94,10 @@ export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewCo
     };
     const onNavigate = (e: Event) => {
       const url = (e as Event & { url?: string }).url;
-      if (url) setAddressInput(url);
+      if (url) {
+        setAddressInput(url);
+        setViewContext(instance.id, `Current page: ${url}`);
+      }
     };
     const onFailLoad = (e: Event) => {
       const detail = e as Event & {
@@ -97,8 +132,9 @@ export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewCo
       wv.removeEventListener('console-message', onConsole);
       wv.remove();
       webviewRef.current = null;
+      browserHandles.delete(instance.id);
     };
-  }, [instance.config.initialUrl]);
+  }, [instance.id, instance.config.initialUrl]);
 
   const navigate = (raw: string) => {
     const url = normalizeUrl(raw);
@@ -106,7 +142,6 @@ export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewCo
     setAddressInput(url);
     const wv = webviewRef.current;
     if (!wv) return;
-    // loadURL is preferred but only exists after the webview is attached.
     if (typeof wv.loadURL === 'function') {
       void wv.loadURL(url).catch(() => {
         /* surfaces via did-fail-load */
@@ -115,6 +150,7 @@ export function BrowserView({ instance }: { instance: ViewInstance<BrowserViewCo
       wv.setAttribute('src', url);
     }
   };
+  navigateRef.current = navigate;
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

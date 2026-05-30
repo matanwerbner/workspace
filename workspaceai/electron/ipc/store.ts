@@ -18,6 +18,12 @@ function assertKey(key: string): asserts key is keyof Schema {
   }
 }
 
+// Read the persisted app state directly (main process), used to seed allowed
+// workspace roots on startup without trusting the renderer.
+export function getPersistedAppState(): unknown {
+  return store.get('appState');
+}
+
 export function registerStoreHandlers(): void {
   ipcMain.handle('store:get', async (_e, key: string) => {
     assertKey(key);

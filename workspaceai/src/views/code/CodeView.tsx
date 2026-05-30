@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../ipc/client';
+import { useAppStore } from '../../state/store';
 import type { ViewInstance } from '../types';
 import type { CodeViewConfig } from './types';
 import { FileTree } from './FileTree';
 import { MonacoHost, detectLanguage } from './MonacoHost';
+
+const CONTEXT_CONTENT_LIMIT = 3000;
 
 interface OpenFile {
   path: string;
@@ -14,6 +17,7 @@ interface OpenFile {
 
 export function CodeView({ instance }: { instance: ViewInstance<CodeViewConfig> }) {
   const rootPath = instance.config.rootPath;
+  const setViewContext = useAppStore((s) => s.setViewContext);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [openFile, setOpenFile] = useState<OpenFile | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -21,6 +25,22 @@ export function CodeView({ instance }: { instance: ViewInstance<CodeViewConfig> 
   const requestedPathRef = useRef<string | null>(null);
   const openFileRef = useRef<OpenFile | null>(null);
   openFileRef.current = openFile;
+
+  // Update AI context whenever the open file changes
+  useEffect(() => {
+    if (!openFile) {
+      setViewContext(instance.id, `Workspace: ${rootPath}\nNo file currently open.`);
+      return;
+    }
+    const lang = detectLanguage(openFile.name);
+    const snippet = openFile.content.length > CONTEXT_CONTENT_LIMIT
+      ? openFile.content.slice(0, CONTEXT_CONTENT_LIMIT) + '\n… (truncated)'
+      : openFile.content;
+    setViewContext(
+      instance.id,
+      `Currently editing: ${openFile.path}\n\n\`\`\`${lang}\n${snippet}\n\`\`\``,
+    );
+  }, [instance.id, openFile, rootPath, setViewContext]);
 
   const onSelect = useCallback(
     async (path: string) => {
