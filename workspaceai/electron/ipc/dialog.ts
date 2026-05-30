@@ -1,4 +1,5 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron';
+import { registerRoot } from './roots';
 
 function withWindow<T>(
   fn: (win: BrowserWindow | undefined) => Promise<T>,
@@ -16,6 +17,9 @@ export function registerDialogHandlers(): void {
         ? await dialog.showOpenDialog(win, opts)
         : await dialog.showOpenDialog(opts);
       if (result.canceled || result.filePaths.length === 0) return null;
+      // Anchor the chosen folder as an allowed workspace root in the main
+      // process so subsequent fs IPC for it passes server-side validation.
+      registerRoot(result.filePaths[0]);
       return result.filePaths[0];
     }),
   );

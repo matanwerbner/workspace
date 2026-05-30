@@ -22,7 +22,7 @@ function UrlPrompt({ defaultValue, onSubmit, onCancel }: Props) {
   };
 
   return (
-    <div className="modal-backdrop" onClick={onCancel}>
+    <div className="modal-backdrop" style={{ zIndex: 200, background: 'rgba(0,0,0,0.92)' }} onClick={onCancel}>
       <form className="modal" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <div className="modal-header">
           <h2>Open URL</h2>
@@ -56,7 +56,7 @@ function UrlPrompt({ defaultValue, onSubmit, onCancel }: Props) {
             <button type="button" className="btn-ghost" onClick={onCancel}>
               Cancel
             </button>
-            <button type="submit" className="btn-ghost">
+            <button type="submit" className="btn-primary">
               Open
             </button>
           </div>

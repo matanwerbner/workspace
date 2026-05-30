@@ -14,6 +14,15 @@ export function registerView<TConfig>(def: ViewTypeDefinition<TConfig>): void {
       createElement(def.Component, {
         instance: instance as ViewInstance<TConfig>,
       }),
+    tools: def.tools,
+    executeTool: def.executeTool
+      ? (name: string, input: Record<string, unknown>, instance: ViewInstance) =>
+          def.executeTool!(name, input, instance as ViewInstance<TConfig>)
+      : undefined,
+    getContext: def.getContext
+      ? (instance: ViewInstance) =>
+          def.getContext!(instance as ViewInstance<TConfig>)
+      : undefined,
   });
 }
 

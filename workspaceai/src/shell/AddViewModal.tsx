@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getViewType, listViewTypes } from '../views/registry';
 import { useAppStore } from '../state/store';
 import { makeId } from '../lib/uid';
@@ -12,6 +12,14 @@ export function AddViewModal({ onClose }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const viewTypes = useMemo(() => listViewTypes(), []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && busy === null) onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [busy, onClose]);
 
   const onPick = async (typeId: string) => {
     setError(null);
