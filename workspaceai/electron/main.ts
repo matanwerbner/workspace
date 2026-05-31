@@ -2,6 +2,15 @@ import { app, BrowserWindow, net, protocol, shell } from 'electron';
 import { pathToFileURL } from 'node:url';
 import { join } from 'node:path';
 import { registerIpcHandlers } from './ipc';
+<<<<<<< Updated upstream
+=======
+import { isDocAllowed } from './ipc/doc';
+import { disposeTerminals } from './ipc/terminal';
+import { disposeCodeServers } from './ipc/codeServer';
+import { disposeStreams } from './ipc/ai';
+import { getPersistedAppState } from './ipc/store';
+import { seedRootsFromState } from './ipc/roots';
+>>>>>>> Stashed changes
 
 const isDev = !app.isPackaged;
 
@@ -74,9 +83,21 @@ app.on('before-quit', async (event) => {
   } catch {
     // Best-effort; proceed with quit regardless.
   }
+<<<<<<< Updated upstream
+=======
+  disposeTerminals();
+  disposeCodeServers();
+  disposeStreams();
+>>>>>>> Stashed changes
   app.exit(0);
 });
 
 app.on('window-all-closed', () => {
+<<<<<<< Updated upstream
+=======
+  disposeTerminals();
+  disposeCodeServers();
+  disposeStreams();
+>>>>>>> Stashed changes
   if (process.platform !== 'darwin') app.quit();
 });
