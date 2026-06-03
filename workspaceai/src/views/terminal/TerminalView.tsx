@@ -1,112 +1,51 @@
 import { useEffect, useRef } from 'react';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
-import { api } from '../../ipc/client';
 import { selectActiveViewId, useAppStore } from '../../state/store';
 import type { ViewInstance } from '../types';
 import type { TerminalViewConfig } from './types';
-
-const OUTPUT_LIMIT = 3000;
+import { getOrCreateSession, getSession } from './sessionCache';
 
 export function TerminalView({ instance }: { instance: ViewInstance<TerminalViewConfig> }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const terminalRef = useRef<Terminal | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-  const setViewContext = useAppStore((s) => s.setViewContext);
   const isActive = useAppStore((s) => selectActiveViewId(s) === instance.id);
+
+  // Attach the cached xterm host to this container. The session (xterm buffer +
+  // pty) is owned by the module-level cache, so on unmount we only DETACH — the
+  // shell keeps running and its scrollback survives remounts (HMR, tab switches).
+  // The pty is killed only on real view removal (see the view's onRemove hook).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const session = getOrCreateSession(instance.id, instance.config.cwd);
+    container.appendChild(session.host);
+    requestAnimationFrame(() => {
+      session.fitAddon.fit();
+      session.terminal.refresh(0, session.terminal.rows - 1);
+    });
+    return () => {
+      if (session.host.parentNode === container) {
+        container.removeChild(session.host);
+      }
+    };
+  }, [instance.id, instance.config.cwd]);
 
   // Refit and repaint when the view becomes visible after being hidden (display:none
   // collapses the canvas; xterm doesn't auto-repaint rows when it comes back).
   useEffect(() => {
     if (!isActive) return;
     requestAnimationFrame(() => {
-      fitAddonRef.current?.fit();
-      const t = terminalRef.current;
-      if (t) t.refresh(0, t.rows - 1);
+      const session = getSession(instance.id);
+      if (!session) return;
+      session.fitAddon.fit();
+      session.terminal.refresh(0, session.terminal.rows - 1);
     });
-  }, [isActive]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const terminal = new Terminal({
-      theme: {
-        background: '#0d0d0d',
-        foreground: '#d4d4d4',
-        cursor: '#d4d4d4',
-        selectionBackground: 'rgba(100, 100, 255, 0.3)',
-      },
-      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-      fontSize: 13,
-      cursorBlink: true,
-      allowTransparency: false,
-      scrollback: 5000,
-    });
-
-    const fitAddon = new FitAddon();
-    terminal.loadAddon(fitAddon);
-    terminal.open(containerRef.current);
-
-    let termId: string | null = null;
-    let disposed = false;
-    let outputBuf = '';
-
-    const cwd = instance.config.cwd ?? '(home)';
-    setViewContext(instance.id, `Shell cwd: ${cwd}\nNo output yet.`);
-
-    const updateContext = (buf: string) => {
-      const trimmed = buf.length > OUTPUT_LIMIT ? buf.slice(-OUTPUT_LIMIT) : buf;
-      // Strip ANSI escape codes for readable context
-      const clean = trimmed.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\r/g, '');
-      setViewContext(instance.id, `Shell cwd: ${cwd}\n\nRecent output:\n${clean}`);
-    };
-
-    const init = async () => {
-      const result = await api.terminalCreate({ cwd: instance.config.cwd });
-      if (disposed) {
-        void api.terminalKill(result.termId);
-        return;
-      }
-      termId = result.termId;
-      fitAddon.fit();
-
-      api.terminalOnData(termId, (data) => {
-        terminal.write(data);
-        outputBuf += data;
-        updateContext(outputBuf);
-      });
-      api.terminalOnExit(termId, () => terminal.write('\r\n[Process exited]\r\n'));
-
-      terminal.onData((data) => {
-        if (termId) void api.terminalWrite(termId, data);
-      });
-
-      terminal.onResize(({ cols, rows }) => {
-        if (termId) void api.terminalResize(termId, cols, rows);
-      });
-    };
-
-    void init();
-
-    const ro = new ResizeObserver(() => fitAddon.fit());
-    ro.observe(containerRef.current);
-
-    return () => {
-      disposed = true;
-      ro.disconnect();
-      terminal.dispose();
-      if (termId) {
-        api.terminalOffData(termId);
-        api.terminalOffExit(termId);
-        void api.terminalKill(termId);
-      }
-    };
-  }, [instance.config.cwd]);
+  }, [isActive, instance.id]);
 
   return (
     <div className="terminal-view">
-      <div ref={containerRef} className="terminal-container" />
+      <div className="terminal-inset">
+        <div ref={containerRef} className="terminal-container" />
+      </div>
     </div>
   );
 }

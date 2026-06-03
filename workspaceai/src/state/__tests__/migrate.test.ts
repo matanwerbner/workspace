@@ -59,6 +59,19 @@ describe('migrate', () => {
     expect(result.activeWorkspaceId).toBe('w_old');
     expect(result.settings.maxTokens).toBe(8192);
     expect(result.settings.model).toBeTruthy();
+    expect(result.viewTypeUsage).toEqual({});
+  });
+
+  it('preserves viewTypeUsage when present in a v2 blob', () => {
+    const v2 = {
+      schemaVersion: 2,
+      workspaces: [sampleWorkspace()],
+      activeWorkspaceId: 'w_old',
+      settings: {},
+      viewTypeUsage: { terminal: 3, code: 1 },
+    };
+    const result = migrate(v2);
+    expect(result.viewTypeUsage).toEqual({ terminal: 3, code: 1 });
   });
 
   it('returns safe defaults for null/garbage/unknown schemaVersion without throwing', () => {
