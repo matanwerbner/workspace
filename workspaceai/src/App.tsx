@@ -9,6 +9,7 @@ import './views/code';
 import './views/browser';
 import './views/pdf';
 import './views/terminal';
+import './views/notepad';
 
 declare global {
   interface Window {

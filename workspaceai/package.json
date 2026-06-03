@@ -8,31 +8,61 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
+    "dist": "electron-vite build && electron-builder",
+    "dist:mac": "electron-vite build && electron-builder --mac",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "test": "vitest run"
   },
+  "build": {
+    "appId": "com.workspaceai.app",
+    "productName": "WorkspaceAI",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
+    "draft-js": "^0.11.7",
     "electron-store": "^8.2.0",
     "marked": "^18.0.4",
     "monaco-editor": "^0.50.0",
     "node-pty": "^1.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-draft-wysiwyg": "^1.15.0",
     "react-resizable-panels": "^2.0.22",
     "zustand": "^4.5.4"
   },
   "devDependencies": {
+    "@types/draft-js": "^0.11.20",
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/react-draft-wysiwyg": "^1.13.9",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^31.7.7",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^2.3.0",
+    "playwright": "^1.60.0",
     "playwright-core": "^1.60.0",
     "typescript": "^5.5.3",
     "vite": "^5.3.3",

@@ -58,6 +58,7 @@ interface AppStore {
   removeView: (id: string) => void;
   setActiveView: (id: string | null) => void;
   renameView: (id: string, name: string) => void;
+  updateViewConfig: (id: string, config: unknown) => void;
 
   appendMessage: (viewId: string, msg: ChatMessage) => void;
   updateMessageContent: (viewId: string, msgId: string, content: string) => void;
@@ -193,6 +194,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
       workspaces: updateActive(s, (w) => ({
         ...w,
         views: w.views.map((v) => (v.id === id ? { ...v, name } : v)),
+      })),
+    })),
+
+  updateViewConfig: (id, config) =>
+    set((s) => ({
+      workspaces: updateActive(s, (w) => ({
+        ...w,
+        views: w.views.map((v) => (v.id === id ? { ...v, config } : v)),
       })),
     })),
 
