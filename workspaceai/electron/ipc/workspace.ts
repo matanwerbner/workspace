@@ -2,7 +2,7 @@ import { dialog, ipcMain, BrowserWindow } from 'electron';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { seedRootsFromState } from './roots';
+import { registerRoot, seedRootsFromState } from './roots';
 import { setHomeFolder } from '../logger';
 
 function withWindow<T>(
@@ -89,7 +89,9 @@ export function registerWorkspaceHandlers(): void {
   );
 
   ipcMain.handle('workspace:setActiveHomeFolder', (_e, path: string | null) => {
-    setHomeFolder(typeof path === 'string' && path.length > 0 ? path : null);
+    const p = typeof path === 'string' && path.length > 0 ? path : null;
+    setHomeFolder(p);
+    if (p !== null) registerRoot(p);
   });
 
   ipcMain.handle('workspace:import', () =>

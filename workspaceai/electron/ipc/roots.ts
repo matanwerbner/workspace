@@ -63,13 +63,19 @@ export async function assertParentInsideRoots(targetPath: string): Promise<strin
   return join(realParent, basename(resolved));
 }
 
-// Seed roots from persisted app state on startup (server-side, no renderer
-// trust). Reads rootPath / cwd path fields from each saved view config.
-export function seedRootsFromState(state: unknown): void {
-  if (typeof state !== 'object' || state === null) return;
+// Pure helper: collect every rootPath, cwd, and homeFolder string from seeded
+// state without performing any side effects (no registerRoot, no fs access).
+// This separation makes the collection logic unit-testable under Vitest.
+export function collectRootPaths(state: unknown): string[] {
+  const paths: string[] = [];
+  if (typeof state !== 'object' || state === null) return paths;
   const workspaces = (state as { workspaces?: unknown }).workspaces;
-  if (!Array.isArray(workspaces)) return;
+  if (!Array.isArray(workspaces)) return paths;
   for (const ws of workspaces) {
+    // Register workspace homeFolder (the gap being closed in plan 01-02)
+    const homeFolder = (ws as { homeFolder?: unknown })?.homeFolder;
+    if (typeof homeFolder === 'string') paths.push(homeFolder);
+
     const views = (ws as { views?: unknown })?.views;
     if (!Array.isArray(views)) continue;
     for (const view of views) {
@@ -77,8 +83,16 @@ export function seedRootsFromState(state: unknown): void {
       if (typeof config !== 'object' || config === null) continue;
       const root = (config as { rootPath?: unknown }).rootPath;
       const cwd = (config as { cwd?: unknown }).cwd;
-      if (typeof root === 'string') registerRoot(root);
-      if (typeof cwd === 'string') registerRoot(cwd);
+      if (typeof root === 'string') paths.push(root);
+      if (typeof cwd === 'string') paths.push(cwd);
     }
   }
+  return paths;
+}
+
+// Seed roots from persisted app state on startup (server-side, no renderer
+// trust). Reads homeFolder, rootPath, and cwd path fields from each saved
+// workspace and its view configs.
+export function seedRootsFromState(state: unknown): void {
+  for (const p of collectRootPaths(state)) registerRoot(p);
 }
