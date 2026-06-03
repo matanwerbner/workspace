@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Anthropic from '@anthropic-ai/sdk';
 import { selectChatMessages, selectViews, useAppStore } from '../state/store';
-import { api } from '../ipc/client';
+import { api, log } from '../ipc/client';
 import { renderMarkdown } from '../lib/markdown';
 import type { ChatMessage, ChatToolCall } from '../state/types';
 import { getViewType } from '../views/registry';
@@ -101,17 +101,54 @@ function AssistantMessage({ content, isStreaming }: { content: string; isStreami
   );
 }
 
+// Human-friendly labels for tool calls, keyed by tool name. `active` shows
+// while the call is pending/approved; `done` is the past-tense form once it has
+// run; `verb` is the infinitive used in the approval prompt ("wants to …").
+// Unknown tools fall back to a humanized version of the raw name.
+const TOOL_LABELS: Record<string, { active: string; done: string; verb: string }> = {
+  read_note: { active: 'Reading note…', done: 'Read note', verb: 'read the note' },
+  write_note: { active: 'Rewriting note…', done: 'Rewrote note', verb: 'rewrite the note' },
+  append_to_note: { active: 'Updating note…', done: 'Updated note', verb: 'update the note' },
+  read_file: { active: 'Reading file…', done: 'Read file', verb: 'read the file' },
+  write_file: { active: 'Saving file…', done: 'Saved file', verb: 'save the file' },
+  create_file: { active: 'Creating file…', done: 'Created file', verb: 'create the file' },
+  search: { active: 'Searching…', done: 'Searched', verb: 'run a search' },
+};
+
+function toolLabel(name: string, status?: ChatToolCall['status']): string {
+  const entry = TOOL_LABELS[name];
+  if (entry) return status === 'done' ? entry.done : entry.active;
+  // Fallback: "append_to_note" -> "Append to note" (+ ellipsis while active).
+  const human = name.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
+  return status === 'done' ? human : `${human}…`;
+}
+
+function toolVerb(name: string): string {
+  // "run X" — falls back to the humanized raw name, e.g. "run append to note".
+  return TOOL_LABELS[name]?.verb ?? `run ${name.replace(/_/g, ' ')}`;
+}
+
+// Pull a short, human-meaningful target out of a tool's input (e.g. the file
+// path or search query) to show alongside the label. Returns null when there's
+// nothing useful to surface.
+function toolDetail(input: unknown): string | null {
+  if (input && typeof input === 'object') {
+    const o = input as Record<string, unknown>;
+    const target = o.path ?? o.file ?? o.query;
+    if (typeof target === 'string' && target.trim()) return target.trim();
+  }
+  return null;
+}
+
 function ToolCallCard({ call }: { call: ChatToolCall }) {
+  const detail = toolDetail(call.input);
   return (
     <div className={`chat-tool-call status-${call.status}`}>
       <div className="chat-tool-call-head">
-        <span className="chat-tool-call-name">{call.name}</span>
+        <span className="chat-tool-call-name">{toolLabel(call.name, call.status)}</span>
         <span className="chat-tool-call-status">{call.status}</span>
       </div>
-      <pre className="chat-tool-call-input">{stringifyResult(call.input)}</pre>
-      {call.result !== undefined && (
-        <pre className="chat-tool-call-result">{stringifyResult(call.result)}</pre>
-      )}
+      {detail && <div className="chat-tool-call-detail">{detail}</div>}
     </div>
   );
 }
@@ -191,6 +228,14 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
     appendMessage(viewId, userMsg);
     setDraft('');
 
+    log('chat', 'send', {
+      viewId,
+      viewType: view.typeId,
+      model: settings.model,
+      chars: content.length,
+      toolCount: tools.length,
+    });
+
     cancelledRef.current = false;
 
     // Working message array in Anthropic shape. Seed from the existing
@@ -265,6 +310,8 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
           updateMessageContent(viewId, assistantMsgId, accRef.current);
         });
 
+        log('chat', 'turn:start', { viewId, streamId, turn });
+
         let result;
         try {
           result = await api.aiChat({
@@ -301,6 +348,15 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
           (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
         );
 
+        log('chat', 'turn:response', {
+          viewId,
+          streamId,
+          turn,
+          stopReason: result.stopReason,
+          textChars: text.length,
+          toolCalls: toolUseBlocks.map((b) => b.name),
+        });
+
         // Persist the assistant turn's visible text, its full content blocks
         // (for faithful multi-turn replay), plus any tool-call display records.
         updateMessage(viewId, assistantMsgId, {
@@ -335,6 +391,14 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
           const decision = await requestApproval(block);
           if (cancelledRef.current) break;
 
+          log('chat', 'tool:decision', {
+            viewId,
+            tool: block.name,
+            detail: toolDetail(block.input),
+            decision,
+            autoAllowed: alwaysAllowRef.current.has(viewId),
+          });
+
           let res: unknown;
           if (decision === 'reject') {
             res = 'User rejected this tool call';
@@ -342,14 +406,27 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
           } else {
             recorded[i] = { ...recorded[i], status: 'approved' };
             updateMessage(viewId, assistantMsgId, { content: text, toolCalls: [...recorded] });
+            const toolStarted = Date.now();
             try {
               res = await executeTool(
                 block.name,
                 block.input as Record<string, unknown>,
                 view,
               );
+              log('chat', 'tool:result', {
+                viewId,
+                tool: block.name,
+                ms: Date.now() - toolStarted,
+                resultChars: stringifyResult(res).length,
+              });
             } catch (e) {
               res = `Error executing tool: ${e instanceof Error ? e.message : String(e)}`;
+              log(
+                'chat',
+                'tool:error',
+                { viewId, tool: block.name, error: e instanceof Error ? e.message : String(e) },
+                'error',
+              );
             }
             recorded[i] = { ...recorded[i], status: 'done', result: res };
           }
@@ -391,15 +468,19 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
       // Loop ran to its cap while the model was still requesting tools: stop and
       // tell the user rather than silently dropping the last tool round.
       if (!completed && !cancelledRef.current) {
+        log('chat', 'turn:cap-reached', { viewId, maxTurns: MAX_AGENT_TURNS }, 'warn');
         appendMessage(viewId, {
           id: makeId('m'),
           role: 'assistant',
           content: `Stopped: reached the maximum of ${MAX_AGENT_TURNS} tool iterations.`,
           timestamp: Date.now(),
         });
+      } else if (completed && !cancelledRef.current) {
+        log('chat', 'complete', { viewId });
       }
     } catch (e) {
       const errText = e instanceof Error ? e.message : String(e);
+      log('chat', 'error', { viewId, error: errText }, 'error');
       const targetId = activeStreamRef.current;
       if (targetId) {
         updateMessageContent(
@@ -420,6 +501,7 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
   };
 
   const cancelStream = async () => {
+    log('chat', 'cancel', { viewId, streamId: activeStreamRef.current });
     cancelledRef.current = true;
     // Resolve any in-flight approval so the loop can unwind.
     pendingApproval?.resolve('reject');
@@ -499,9 +581,14 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
         {pendingApproval && (
           <div className="chat-approval-card">
             <div className="chat-approval-head">
-              The assistant wants to run <strong>{pendingApproval.name}</strong>
+              The assistant wants to <strong>{toolVerb(pendingApproval.name)}</strong>
+              {toolDetail(pendingApproval.input) && (
+                <span className="chat-approval-detail">
+                  {' '}
+                  ({toolDetail(pendingApproval.input)})
+                </span>
+              )}
             </div>
-            <pre className="chat-approval-input">{stringifyResult(pendingApproval.input)}</pre>
             <div className="chat-approval-actions">
               <button
                 className="btn-primary btn-sm"

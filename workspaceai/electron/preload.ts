@@ -113,6 +113,14 @@ const api = {
   openExternal: (url: string): Promise<void> =>
     ipcRenderer.invoke('shell:openExternal', url),
 
+  // Debug logging — renderer pushes semantic events into the session log file.
+  logEvent: (entry: {
+    level?: 'debug' | 'info' | 'warn' | 'error';
+    category: string;
+    action: string;
+    detail?: unknown;
+  }): Promise<void> => ipcRenderer.invoke('log:event', entry),
+
   // Settings open event sent from the main-process menu
   onOpenSettings: (cb: () => void): void => {
     ipcRenderer.on('shell:openSettings', cb);

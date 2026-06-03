@@ -8,6 +8,7 @@ import { disposeTerminals } from './ipc/terminal';
 import { disposeStreams } from './ipc/ai';
 import { getPersistedAppState } from './ipc/store';
 import { seedRootsFromState } from './ipc/roots';
+import { initLogger, closeLogger, logEvent } from './logger';
 
 const isDev = !app.isPackaged;
 
@@ -196,6 +197,7 @@ function buildMenu(): void {
 }
 
 app.whenReady().then(() => {
+  initLogger();
   registerCsp();
   registerWebviewHardening();
   registerDocProtocol();
@@ -225,11 +227,18 @@ app.on('before-quit', async (event) => {
   }
   disposeTerminals();
   disposeStreams();
+  logEvent({ category: 'app', action: 'before-quit' });
+  await closeLogger();
   app.exit(0);
 });
 
 app.on('window-all-closed', () => {
   disposeTerminals();
   disposeStreams();
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    logEvent({ category: 'app', action: 'window-all-closed' });
+    // Await flush before triggering quit so the final entries are on disk by
+    // the time before-quit fires and app.exit(0) is called.
+    void closeLogger().then(() => app.quit());
+  }
 });

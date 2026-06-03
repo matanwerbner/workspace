@@ -85,4 +85,30 @@ export const api = {
   openExternal: (url: string) => bridge().openExternal(url),
   onOpenSettings: (cb: () => void) => bridge().onOpenSettings(cb),
   offOpenSettings: (cb: () => void) => bridge().offOpenSettings(cb),
+
+  // Debug logging
+  logEvent: (entry: {
+    level?: 'debug' | 'info' | 'warn' | 'error';
+    category: string;
+    action: string;
+    detail?: unknown;
+  }) => bridge().logEvent(entry),
 };
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+// Fire-and-forget semantic logging from the renderer into the per-session log
+// file. Never throws (and never blocks the caller) so it's safe to drop into
+// any code path we want a debug trail for.
+export function log(
+  category: string,
+  action: string,
+  detail?: unknown,
+  level?: LogLevel,
+): void {
+  try {
+    void window.api?.logEvent({ category, action, detail, level });
+  } catch {
+    // Logging must never break the operation it's tracing.
+  }
+}

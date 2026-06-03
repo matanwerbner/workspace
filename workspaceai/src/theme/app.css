@@ -544,29 +544,22 @@ button {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
 }
-.chat-tool-call-name { font-family: var(--font-mono, monospace); color: var(--accent); }
+.chat-tool-call-name { color: var(--fg-0); font-weight: 500; }
 .chat-tool-call-status {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--fg-2);
 }
-.chat-tool-call-input,
-.chat-tool-call-result,
-.chat-approval-input {
-  margin: 4px 0 0;
-  padding: 6px 8px;
-  background: var(--bg-0);
-  border-radius: var(--radius-sm);
+.chat-tool-call-detail {
+  margin-top: 4px;
   font-family: var(--font-mono, monospace);
   font-size: 12px;
-  white-space: pre-wrap;
+  color: var(--fg-2);
   word-break: break-word;
-  max-height: 180px;
-  overflow: auto;
 }
+.chat-approval-detail { color: var(--fg-2); font-family: var(--font-mono, monospace); }
 
 .chat-approval-card {
   align-self: stretch;
@@ -954,6 +947,7 @@ button {
 .terminal-view {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   height: 100%;
   width: 100%;
   background: #0d0d0d;

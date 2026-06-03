@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../ipc/client';
+import { api, log } from '../ipc/client';
 import { makeId } from '../lib/uid';
 import {
   DEFAULT_SETTINGS,
@@ -145,6 +145,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       apiKeySet: keySet,
       hydrated: true,
     });
+    log('app', 'hydrate', { workspaces: state.workspaces.length, apiKeySet: keySet });
   },
 
   flush: async () => {
@@ -154,16 +155,19 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setApiKeySet: (value) => set({ apiKeySet: value }),
   setSettingsOpen: (value) => set({ settingsOpen: value }),
 
-  addView: (view) =>
+  addView: (view) => {
+    log('view', 'add', { id: view.id, typeId: view.typeId, name: view.name });
     set((s) => ({
       workspaces: updateActive(s, (w) => ({
         ...w,
         views: [...w.views, view],
         activeViewId: view.id,
       })),
-    })),
+    }));
+  },
 
-  removeView: (id) =>
+  removeView: (id) => {
+    log('view', 'remove', { id });
     set((s) => {
       const { [id]: _ctx, ...restContext } = s.viewContextByViewId;
       return {
@@ -182,20 +186,25 @@ export const useAppStore = create<AppStore>((set, get) => ({
           };
         }),
       };
-    }),
+    });
+  },
 
-  setActiveView: (id) =>
+  setActiveView: (id) => {
+    log('view', 'activate', { id });
     set((s) => ({
       workspaces: updateActive(s, (w) => ({ ...w, activeViewId: id })),
-    })),
+    }));
+  },
 
-  renameView: (id, name) =>
+  renameView: (id, name) => {
+    log('view', 'rename', { id, name });
     set((s) => ({
       workspaces: updateActive(s, (w) => ({
         ...w,
         views: w.views.map((v) => (v.id === id ? { ...v, name } : v)),
       })),
-    })),
+    }));
+  },
 
   updateViewConfig: (id, config) =>
     set((s) => ({
@@ -242,13 +251,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
       })),
     })),
 
-  clearChat: (viewId) =>
+  clearChat: (viewId) => {
+    log('chat', 'clear', { viewId });
     set((s) => ({
       workspaces: updateActive(s, (w) => {
         const { [viewId]: _dropped, ...rest } = w.chatByViewId;
         return { ...w, chatByViewId: rest };
       }),
-    })),
+    }));
+  },
 
   getChatState: (viewId) =>
     selectActiveWorkspace(get())?.chatStateByViewId[viewId] ?? defaultChatState(),
@@ -283,6 +294,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   createWorkspace: (name) =>
     set((s) => {
       const ws = makeWorkspace(name?.trim() || `Workspace ${s.workspaces.length + 1}`);
+      log('workspace', 'create', { id: ws.id, name: ws.name });
       return {
         workspaces: [...s.workspaces, ws],
         activeWorkspaceId: ws.id,
@@ -290,18 +302,25 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }),
 
   switchWorkspace: (id) =>
-    set((s) => (s.workspaces.some((w) => w.id === id) ? { activeWorkspaceId: id } : {})),
+    set((s) => {
+      if (!s.workspaces.some((w) => w.id === id)) return {};
+      log('workspace', 'switch', { id });
+      return { activeWorkspaceId: id };
+    }),
 
-  renameWorkspace: (id, name) =>
+  renameWorkspace: (id, name) => {
+    log('workspace', 'rename', { id, name });
     set((s) => ({
       workspaces: s.workspaces.map((w) => (w.id === id ? { ...w, name } : w)),
-    })),
+    }));
+  },
 
   duplicateWorkspace: (id) =>
     set((s) => {
       const src = s.workspaces.find((w) => w.id === id);
       if (!src) return {};
       const copy = cloneWorkspaceWithNewIds(src, `${src.name} copy`);
+      log('workspace', 'duplicate', { from: id, to: copy.id });
       return {
         workspaces: [...s.workspaces, copy],
         activeWorkspaceId: copy.id,
@@ -310,6 +329,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   deleteWorkspace: (id) =>
     set((s) => {
+      log('workspace', 'delete', { id });
       const workspaces = s.workspaces.filter((w) => w.id !== id);
       const activeWorkspaceId =
         s.activeWorkspaceId === id
@@ -318,20 +338,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return { workspaces, activeWorkspaceId };
     }),
 
-  setSettings: (partial) =>
-    set((s) => ({ settings: { ...s.settings, ...partial } })),
+  setSettings: (partial) => {
+    // Log which settings changed (keys only — values may include the system
+    // prompt override, which we keep out of the log to avoid noise/secrets).
+    log('settings', 'update', { keys: Object.keys(partial) });
+    set((s) => ({ settings: { ...s.settings, ...partial } }));
+  },
 
   exportActiveWorkspace: async () => {
     const workspace = selectActiveWorkspace(get());
     if (!workspace) return null;
+    log('workspace', 'export', { id: workspace.id, name: workspace.name });
     return api.workspaceExport(workspace);
   },
 
   importWorkspace: async () => {
+    log('workspace', 'import:start');
     let result;
     try {
       result = await api.workspaceImport();
     } catch (e) {
+      log('workspace', 'import:error', { error: e instanceof Error ? e.message : String(e) }, 'error');
       console.error('Workspace import failed:', e);
       set({ lastImportMissingPaths: [`Import failed: ${e instanceof Error ? e.message : String(e)}`] });
       return;
@@ -341,6 +368,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       (typeof result.workspace?.name === 'string' && result.workspace.name) ||
       'Imported workspace';
     const imported = cloneWorkspaceWithNewIds(result.workspace, name);
+    log('workspace', 'import:ok', { id: imported.id, name, missingPaths: result.missingPaths.length });
     set((s) => ({
       workspaces: [...s.workspaces, imported],
       activeWorkspaceId: imported.id,
