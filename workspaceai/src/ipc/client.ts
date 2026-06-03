@@ -83,6 +83,19 @@ export const api = {
   workspaceInitHomeFolder: (name: string) => bridge().workspaceInitHomeFolder(name),
   workspaceSetActiveHomeFolder: (path: string | null) =>
     bridge().workspaceSetActiveHomeFolder(path),
+
+  // Memory
+  memoryReadIndex: (homeFolder: string) => bridge().memoryReadIndex(homeFolder),
+  memoryReadEntry: (homeFolder: string, topic: string) =>
+    bridge().memoryReadEntry(homeFolder, topic),
+  memoryWriteEntry: (
+    homeFolder: string,
+    name: string,
+    description: string,
+    type: string,
+    content: string,
+  ) => bridge().memoryWriteEntry(homeFolder, name, description, type, content),
+
   workspaceExport: (workspace: Workspace) => bridge().workspaceExport(workspace),
   workspaceImport: () => bridge().workspaceImport(),
 

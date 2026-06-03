@@ -11,6 +11,8 @@ export interface AiTool {
   name: string;
   description: string;
   input_schema: Record<string, unknown>;
+  /** If true, skip the approval prompt entirely for this tool. */
+  alwaysAllow?: boolean;
 }
 
 export interface ViewTypeDefinition<TConfig = unknown> {
