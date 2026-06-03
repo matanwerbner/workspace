@@ -112,7 +112,7 @@ async function executeTool(
 registerView<CodeViewConfig>({
   typeId: 'code',
   label: 'Code View',
-  description: 'Open a folder and edit files with Monaco.',
+  description: 'Open a folder in a full embedded VS Code editor (code-server).',
   icon: <span className="view-type-icon">{'</>'}</span>,
   createConfig: async () => {
     const folder = await api.pickFolder();

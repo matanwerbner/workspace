@@ -21,11 +21,29 @@ export function SettingsModal({ onClose }: Props) {
   const [showKey, setShowKey] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
+  const [codeServerInfo, setCodeServerInfo] = useState<{ kind: string | null; bin: string | null } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Probe which code-server / openvscode-server binary resolves for the Cursor
+  // view, re-probing when the configured override path changes.
+  useEffect(() => {
+    let cancelled = false;
+    void api
+      .codeServerStatus({ binPath: settings.codeServerPath })
+      .then((info) => {
+        if (!cancelled) setCodeServerInfo(info);
+      })
+      .catch(() => {
+        if (!cancelled) setCodeServerInfo({ kind: null, bin: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.codeServerPath]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -151,6 +169,16 @@ export function SettingsModal({ onClose }: Props) {
               />
             </div>
             <div className="settings-field">
+              <label className="settings-checkbox">
+                <input
+                  type="checkbox"
+                  checked={settings.htmlResponses ?? false}
+                  onChange={(e) => setSettings({ htmlResponses: e.target.checked })}
+                />
+                <span>Render responses as beautiful, expressive HTML</span>
+              </label>
+            </div>
+            <div className="settings-field">
               <label className="settings-field-label" htmlFor="settings-system-prompt">
                 System prompt override (optional)
               </label>
@@ -164,6 +192,40 @@ export function SettingsModal({ onClose }: Props) {
                 }
                 placeholder="Append extra instructions to the assistant's system prompt…"
                 spellCheck={false}
+              />
+            </div>
+          </div>
+          <div className="settings-section">
+            <div className="settings-label">Code View (Embedded VS Code)</div>
+            <div className="settings-hint">
+              {codeServerInfo === null ? (
+                <span className="muted">Checking…</span>
+              ) : codeServerInfo.bin ? (
+                <span className="settings-key-set">
+                  Found {codeServerInfo.kind}: {codeServerInfo.bin}
+                </span>
+              ) : (
+                <span className="muted">
+                  No code-server found. Install with <code>brew install code-server</code> or{' '}
+                  <code>npm i -g code-server</code>, or set an explicit path below.
+                </span>
+              )}
+            </div>
+            <div className="settings-field">
+              <label className="settings-field-label" htmlFor="settings-code-server">
+                code-server binary path (optional)
+              </label>
+              <input
+                id="settings-code-server"
+                className="settings-input"
+                type="text"
+                value={settings.codeServerPath ?? ''}
+                onChange={(e) =>
+                  setSettings({ codeServerPath: e.target.value || undefined })
+                }
+                placeholder="/opt/homebrew/bin/code-server"
+                spellCheck={false}
+                autoComplete="off"
               />
             </div>
           </div>

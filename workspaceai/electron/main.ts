@@ -5,6 +5,7 @@ import { statSync } from 'node:fs';
 import { registerIpcHandlers } from './ipc';
 import { isDocAllowed } from './ipc/doc';
 import { disposeTerminals } from './ipc/terminal';
+import { disposeCodeServers } from './ipc/codeServer';
 import { disposeStreams } from './ipc/ai';
 import { getPersistedAppState } from './ipc/store';
 import { seedRootsFromState } from './ipc/roots';
@@ -226,6 +227,7 @@ app.on('before-quit', async (event) => {
     // Best-effort; proceed with quit regardless.
   }
   disposeTerminals();
+  disposeCodeServers();
   disposeStreams();
   logEvent({ category: 'app', action: 'before-quit' });
   await closeLogger();
@@ -234,11 +236,10 @@ app.on('before-quit', async (event) => {
 
 app.on('window-all-closed', () => {
   disposeTerminals();
+  disposeCodeServers();
   disposeStreams();
   if (process.platform !== 'darwin') {
     logEvent({ category: 'app', action: 'window-all-closed' });
-    // Await flush before triggering quit so the final entries are on disk by
-    // the time before-quit fires and app.exit(0) is called.
     void closeLogger().then(() => app.quit());
   }
 });

@@ -38,6 +38,12 @@ export interface AppSettings {
   model: string;
   maxTokens: number;
   systemPromptOverride?: string;
+  // When true, the AI is instructed to author expressive HTML and the chat
+  // renders it as-is instead of treating the response as markdown.
+  htmlResponses?: boolean;
+  // Optional explicit path to a code-server / openvscode-server binary for the
+  // Cursor (embedded VS Code) view. When unset, the main process searches PATH.
+  codeServerPath?: string;
 }
 
 export interface PersistedAppState {

@@ -73,6 +73,12 @@ export const api = {
   terminalOnExit: (termId: string, cb: () => void) => bridge().terminalOnExit(termId, cb),
   terminalOffExit: (termId: string) => bridge().terminalOffExit(termId),
 
+  // Code server (embedded VS Code)
+  codeServerStart: (opts: { rootPath: string; binPath?: string }) =>
+    bridge().codeServerStart(opts),
+  codeServerStop: (serverId: string) => bridge().codeServerStop(serverId),
+  codeServerStatus: (opts?: { binPath?: string }) => bridge().codeServerStatus(opts),
+
   // Workspace export/import
   workspaceExport: (workspace: Workspace) => bridge().workspaceExport(workspace),
   workspaceImport: () => bridge().workspaceImport(),
@@ -80,6 +86,7 @@ export const api = {
   // Doc protocol allow-list
   docAllow: (path: string) => bridge().docAllow(path),
   docRevoke: (path: string) => bridge().docRevoke(path),
+  docRead: (path: string) => bridge().docRead(path),
 
   // Shell
   openExternal: (url: string) => bridge().openExternal(url),

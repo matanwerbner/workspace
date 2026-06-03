@@ -99,6 +99,22 @@ const api = {
     termExitHandlers.delete(termId);
   },
 
+  // Code server (embedded VS Code)
+  codeServerStart: (opts: {
+    rootPath: string;
+    binPath?: string;
+  }): Promise<
+    | { status: 'ok'; serverId: string; url: string }
+    | { status: 'not_installed' }
+    | { status: 'error'; message: string }
+  > => ipcRenderer.invoke('codeServer:start', opts),
+  codeServerStop: (serverId: string): Promise<void> =>
+    ipcRenderer.invoke('codeServer:stop', { serverId }),
+  codeServerStatus: (opts?: {
+    binPath?: string;
+  }): Promise<{ kind: string | null; bin: string | null }> =>
+    ipcRenderer.invoke('codeServer:status', opts ?? {}),
+
   // Workspace export/import
   workspaceExport: (workspace: Workspace): Promise<string | null> =>
     ipcRenderer.invoke('workspace:export', workspace),
@@ -108,6 +124,7 @@ const api = {
   // Doc protocol allow-list
   docAllow: (path: string): Promise<void> => ipcRenderer.invoke('doc:allow', path),
   docRevoke: (path: string): Promise<void> => ipcRenderer.invoke('doc:revoke', path),
+  docRead: (path: string): Promise<ArrayBuffer> => ipcRenderer.invoke('doc:read', path),
 
   // Shell
   openExternal: (url: string): Promise<void> =>

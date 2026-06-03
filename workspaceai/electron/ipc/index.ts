@@ -5,6 +5,7 @@ import { registerDialogHandlers } from './dialog';
 import { registerStoreHandlers } from './store';
 import { registerAiHandlers } from './ai';
 import { registerTerminalHandlers } from './terminal';
+import { registerCodeServerHandlers } from './codeServer';
 import { registerDocHandlers } from './doc';
 import { registerWorkspaceHandlers } from './workspace';
 import { logEvent } from '../logger';
@@ -97,6 +98,7 @@ export function registerIpcHandlers(): void {
     registerStoreHandlers();
     registerAiHandlers();
     registerTerminalHandlers();
+    registerCodeServerHandlers();
     registerDocHandlers();
     registerWorkspaceHandlers();
 

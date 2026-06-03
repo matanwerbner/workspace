@@ -14,11 +14,8 @@ interface Props {
   onOpenSettings: () => void;
 }
 
-// Hard cap on agentic tool-use rounds, so a tool whose result keeps prompting
-// further tool calls cannot spin the loop indefinitely (cost / no settling).
 const MAX_AGENT_TURNS = 25;
 
-// A tool call awaiting the user's approve/reject decision.
 interface PendingApproval {
   id: string;
   name: string;
@@ -26,14 +23,15 @@ interface PendingApproval {
   resolve: (decision: 'approve' | 'reject') => void;
 }
 
-function shortModelName(model: string): string {
-  if (model.includes('opus')) return 'Opus';
-  if (model.includes('sonnet')) return 'Sonnet';
-  if (model.includes('haiku')) return 'Haiku';
-  return model.split('-')[1] ?? model;
-}
+const MODEL_OPTIONS: { label: string; value: string }[] = [
+  { label: 'Opus 4.8', value: 'claude-opus-4-8' },
+  { label: 'Sonnet 4.6', value: 'claude-sonnet-4-6' },
+  { label: 'Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
+];
 
-function buildSystemPrompt(view: ViewInstance, context: string): string {
+type ResponseFormat = 'markdown' | 'html' | 'image';
+
+function buildSystemPrompt(view: ViewInstance, context: string, format: ResponseFormat): string {
   const parts = ['You are a helpful AI assistant integrated into WorkspaceAI.'];
   switch (view.typeId) {
     case 'code':
@@ -42,7 +40,6 @@ function buildSystemPrompt(view: ViewInstance, context: string): string {
       break;
     case 'browser':
       parts.push('You are helping while the user browses the web.');
-      // context already carries the "Current page: <url>" label from getContext.
       if (context) parts.push(context);
       break;
     case 'terminal':
@@ -57,9 +54,81 @@ function buildSystemPrompt(view: ViewInstance, context: string): string {
       if (context) parts.push(context);
       break;
   }
-  parts.push('Be concise and precise. Use markdown only when it clearly improves readability.');
+  if (format === 'html') {
+    parts.push(
+      'Format your ENTIRE response as a single self-contained fragment of beautiful, expressive, semantic HTML. ' +
+        'Use headings, paragraphs, lists, tables, <strong>/<em>, <code>/<pre>, and inline style attributes ' +
+        '(colors, spacing, borders, backgrounds, rounded corners) to make it visually rich and easy to scan. ' +
+        'Output ONLY the HTML fragment — no <script>, no <style> blocks, no <html>/<head>/<body> wrappers, and no markdown code fences.',
+    );
+  } else if (format === 'image') {
+    parts.push(
+      'Respond with a single self-contained SVG document that visually answers the request — a diagram, chart, ' +
+        'illustration, or styled graphic. Set explicit width and height attributes (e.g. width="640" height="420") ' +
+        'and a matching viewBox. Use only inline SVG primitives (shapes, paths, text, gradients) — no <script>, no ' +
+        '<foreignObject>, no external images or fonts. Output ONLY the <svg>…</svg> markup, with no commentary or markdown fences.',
+    );
+  } else {
+    parts.push('Be concise and precise. Use markdown only when it clearly improves readability.');
+  }
   return parts.join('\n\n');
 }
+
+// Strip a leading/trailing ```lang … ``` fence the model may add despite being
+// asked not to, so the inner markup renders rather than showing the fence.
+function stripFences(s: string): string {
+  const m = s.match(/^\s*```(?:html|svg|xml)?\s*([\s\S]*?)\s*```\s*$/i);
+  return m ? m[1] : s;
+}
+
+// Rasterize a model-authored SVG onto a <canvas>. SVG is declarative (no script
+// execution) and the app CSP blocks scripts anyway, so this is safe.
+function SvgCanvas({ svg }: { svg: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    setFailed(false);
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      const avail = (canvas.parentElement?.clientWidth ?? 480) - 4;
+      const natW = img.width || avail;
+      const natH = img.height || Math.round(avail * 0.66);
+      const scale = Math.min(1, avail / natW);
+      const w = Math.round(natW * scale);
+      const h = Math.round(natH * scale);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+      ctx.scale(dpr, dpr);
+      ctx.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      setFailed(true);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+    return () => URL.revokeObjectURL(url);
+  }, [svg]);
+
+  if (failed) {
+    return <div className="chat-message-content muted">Could not render the image.</div>;
+  }
+  return <canvas ref={canvasRef} className="chat-canvas" />;
+}
+
+// Suppress unused-variable warning — SvgCanvas is infrastructure for the
+// 'image' response format and will be used when that format is exposed in UI.
+void SvgCanvas;
 
 function stringifyResult(res: unknown): string {
   if (typeof res === 'string') return res;
@@ -70,8 +139,15 @@ function stringifyResult(res: unknown): string {
   }
 }
 
-function AssistantMessage({ content, isStreaming }: { content: string; isStreaming: boolean }) {
-  // Intercept link clicks and open them externally instead of navigating the renderer
+function AssistantMessage({
+  content,
+  isStreaming,
+  htmlMode,
+}: {
+  content: string;
+  isStreaming: boolean;
+  htmlMode: boolean;
+}) {
   const onClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
     const anchor = target.closest('a');
@@ -89,13 +165,15 @@ function AssistantMessage({ content, isStreaming }: { content: string; isStreami
     );
   }
 
-  const html = renderMarkdown(content);
-  const cursorHtml = isStreaming ? html + '<span class="chat-cursor">▌</span>' : html;
+  // Inline scripts/handlers are blocked by the app CSP (script-src 'self'), so
+  // model-authored HTML can't execute — only render its markup.
+  const inner = htmlMode ? stripFences(content) : renderMarkdown(content);
+  const withCursor = isStreaming ? inner + '<span class="chat-cursor">▌</span>' : inner;
 
   return (
     <div
-      className="chat-message-content markdown-content"
-      dangerouslySetInnerHTML={{ __html: cursorHtml }}
+      className={`chat-message-content ${htmlMode ? 'chat-html-content' : 'markdown-content'}`}
+      dangerouslySetInnerHTML={{ __html: withCursor }}
       onClick={onClick}
     />
   );
@@ -124,7 +202,6 @@ function toolLabel(name: string, status?: ChatToolCall['status']): string {
 }
 
 function toolVerb(name: string): string {
-  // "run X" — falls back to the humanized raw name, e.g. "run append to note".
   return TOOL_LABELS[name]?.verb ?? `run ${name.replace(/_/g, ' ')}`;
 }
 
@@ -161,6 +238,7 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
   const clearChat = useAppStore((s) => s.clearChat);
   const apiKeySet = useAppStore((s) => s.apiKeySet);
   const settings = useAppStore((s) => s.settings);
+  const setSettings = useAppStore((s) => s.setSettings);
   const views = useAppStore(selectViews);
   const viewContext = useAppStore((s) => s.viewContextByViewId[viewId] ?? '');
 
@@ -188,17 +266,10 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
   const isStreaming = streamingMsgId !== null;
 
   // Ask the user to approve/reject a tool call. Resolves with the decision.
-  const requestApproval = (
-    block: Anthropic.ToolUseBlock,
-  ): Promise<'approve' | 'reject'> => {
+  const requestApproval = (block: Anthropic.ToolUseBlock): Promise<'approve' | 'reject'> => {
     if (alwaysAllowRef.current.has(viewId)) return Promise.resolve('approve');
     return new Promise((resolve) => {
-      setPendingApproval({
-        id: block.id,
-        name: block.name,
-        input: block.input,
-        resolve,
-      });
+      setPendingApproval({ id: block.id, name: block.name, input: block.input, resolve });
     });
   };
 
@@ -273,7 +344,8 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
     const working = rawWorking.slice(0, cutAt);
 
     const baseContext = [viewContext, extraContext].filter(Boolean).join('\n\n');
-    const systemBase = buildSystemPrompt(view, baseContext);
+    const responseFormat: ResponseFormat = settings.htmlResponses ? 'html' : 'markdown';
+    const systemBase = buildSystemPrompt(view, baseContext, responseFormat);
     const systemPrompt = settings.systemPromptOverride
       ? `${systemBase}\n\n${settings.systemPromptOverride}`
       : systemBase;
@@ -529,10 +601,35 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
         <div className="chat-header-left">
           <span className="chat-title">AI Console</span>
           {apiKeySet && (
-            <span className="chat-model-badge">
-              <span className="chat-model-dot" />
-              {shortModelName(settings.model)}
-            </span>
+            <>
+              <select
+                className="chat-select"
+                value={settings.model}
+                onChange={(e) => setSettings({ model: e.target.value })}
+                disabled={busy}
+                title="Model"
+                aria-label="Model"
+              >
+                {MODEL_OPTIONS.every((o) => o.value !== settings.model) && (
+                  <option value={settings.model}>{settings.model}</option>
+                )}
+                {MODEL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="chat-select"
+                value={settings.htmlResponses ? 'html' : 'markdown'}
+                onChange={(e) => setSettings({ htmlResponses: e.target.value === 'html' })}
+                title="Response format"
+                aria-label="Response format"
+              >
+                <option value="markdown">Markdown</option>
+                <option value="html">HTML</option>
+              </select>
+            </>
           )}
         </div>
         <div className="chat-header-actions">
@@ -568,7 +665,11 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
             <div className="chat-message-role">{m.role === 'user' ? 'You' : 'Assistant'}</div>
             {m.role === 'assistant' ? (
               (m.content.length > 0 || !m.toolCalls) && (
-                <AssistantMessage content={m.content} isStreaming={m.id === streamingMsgId} />
+                <AssistantMessage
+                  content={m.content}
+                  isStreaming={m.id === streamingMsgId}
+                  htmlMode={settings.htmlResponses ?? false}
+                />
               )
             ) : m.content ? (
               <div className="chat-message-content">{m.content}</div>
