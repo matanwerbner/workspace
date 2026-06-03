@@ -51,6 +51,7 @@ export interface PersistedAppState {
   workspaces: Workspace[];
   activeWorkspaceId: string | null;
   settings: AppSettings;
+  viewTypeUsage: Record<string, number>;
 }
 
 export interface PersistedAppStateV1 {

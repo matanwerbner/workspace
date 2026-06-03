@@ -23,6 +23,7 @@ function freshState(): PersistedAppState {
     workspaces: [],
     activeWorkspaceId: null,
     settings: { ...DEFAULT_SETTINGS },
+    viewTypeUsage: {},
   };
 }
 
@@ -42,7 +43,10 @@ export function migrate(raw: unknown): PersistedAppState {
     const settings = isRecord(raw.settings)
       ? { ...DEFAULT_SETTINGS, ...(raw.settings as Partial<AppSettings>) }
       : { ...DEFAULT_SETTINGS };
-    return { schemaVersion: SCHEMA_VERSION, workspaces, activeWorkspaceId, settings };
+    const viewTypeUsage = isRecord(raw.viewTypeUsage)
+      ? (raw.viewTypeUsage as Record<string, number>)
+      : {};
+    return { schemaVersion: SCHEMA_VERSION, workspaces, activeWorkspaceId, settings, viewTypeUsage };
   }
 
   if (raw.schemaVersion === 1) {

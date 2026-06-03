@@ -32,3 +32,7 @@ grep '"category":"ipc"' ~/Library/Application\ Support/workspaceai/logs/<session
 Every main-process IPC handler is auto-logged (start / `:ok`+duration / `:error`). Renderer events (chat lifecycle, view/workspace/settings changes) are also written via `window.api.logEvent`. The `ai:setKey` call is redacted; `ai:chat`, `terminal:write`, and `fs:writeFile` payloads are summarized, not stored in full.
 
 Log entries follow the shape: `{ ts, level, category, action, detail }`.
+
+## Testing
+
+Every code change or addition should be reflected in tests. Keep tests minimal — cover the new behavior, not every edge case.

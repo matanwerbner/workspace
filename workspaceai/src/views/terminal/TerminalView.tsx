@@ -3,7 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { api } from '../../ipc/client';
-import { useAppStore } from '../../state/store';
+import { selectActiveViewId, useAppStore } from '../../state/store';
 import type { ViewInstance } from '../types';
 import type { TerminalViewConfig } from './types';
 
@@ -11,7 +11,21 @@ const OUTPUT_LIMIT = 3000;
 
 export function TerminalView({ instance }: { instance: ViewInstance<TerminalViewConfig> }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<Terminal | null>(null);
+  const fitAddonRef = useRef<FitAddon | null>(null);
   const setViewContext = useAppStore((s) => s.setViewContext);
+  const isActive = useAppStore((s) => selectActiveViewId(s) === instance.id);
+
+  // Refit and repaint when the view becomes visible after being hidden (display:none
+  // collapses the canvas; xterm doesn't auto-repaint rows when it comes back).
+  useEffect(() => {
+    if (!isActive) return;
+    requestAnimationFrame(() => {
+      fitAddonRef.current?.fit();
+      const t = terminalRef.current;
+      if (t) t.refresh(0, t.rows - 1);
+    });
+  }, [isActive]);
 
   useEffect(() => {
     if (!containerRef.current) return;
