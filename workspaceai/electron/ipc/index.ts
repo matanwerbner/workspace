@@ -8,6 +8,7 @@ import { registerTerminalHandlers } from './terminal';
 import { registerCodeServerHandlers } from './codeServer';
 import { registerDocHandlers } from './doc';
 import { registerWorkspaceHandlers } from './workspace';
+import { registerMemoryHandlers } from './memory';
 import { logEvent } from '../logger';
 
 // Channels we never log argument/return payloads for, to keep secrets out of
@@ -15,7 +16,7 @@ import { logEvent } from '../logger';
 const REDACTED_CHANNELS = new Set(['ai:setKey']);
 // Channels too chatty or too large to log every payload verbatim — we log a
 // compact summary instead (see summarizeArgs/summarizeResult).
-const SUMMARIZED_CHANNELS = new Set(['ai:chat', 'terminal:write', 'fs:writeFile']);
+const SUMMARIZED_CHANNELS = new Set(['ai:chat', 'terminal:write', 'fs:writeFile', 'memory:writeEntry']);
 
 function summarizeArgs(channel: string, args: unknown[]): unknown {
   if (REDACTED_CHANNELS.has(channel)) return '[redacted]';
@@ -38,6 +39,13 @@ function summarizeArgs(channel: string, args: unknown[]): unknown {
   if (channel === 'fs:writeFile') {
     const [filePath, content] = args as [string, string, string];
     return { filePath, bytes: typeof content === 'string' ? content.length : 0 };
+  }
+  if (channel === 'memory:writeEntry') {
+    // args: [homeFolder, name, description, type, content]
+    const name = args[1] as string;
+    const type = args[3] as string;
+    const content = args[4];
+    return { name, type, bytes: typeof content === 'string' ? content.length : 0 };
   }
   return args;
 }
@@ -101,6 +109,7 @@ export function registerIpcHandlers(): void {
     registerCodeServerHandlers();
     registerDocHandlers();
     registerWorkspaceHandlers();
+    registerMemoryHandlers();
 
     ipcMain.handle('shell:openExternal', (_e, url: string) => {
       const parsed = new URL(url);
