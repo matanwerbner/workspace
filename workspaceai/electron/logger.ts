@@ -24,9 +24,10 @@ export interface LogEntry {
 let stream: WriteStream | null = null;
 let sessionId = '';
 let sessionPath = '';
+let activeHomeFolder: string | null = null;
 
 function logsDir(): string {
-  return join(app.getPath('userData'), 'logs');
+  return activeHomeFolder ? join(activeHomeFolder, 'logs') : join(app.getPath('userData'), 'logs');
 }
 
 // Build a filesystem-and-sort friendly timestamp: 2026-06-03T14-22-09-123Z.
@@ -68,9 +69,34 @@ function rotateSessions(dir: string): void {
   }
 }
 
+// Redirect the active log directory to a workspace home folder (or back to
+// userData when path is null). Closes the current stream and opens a fresh
+// session log in the new location so subsequent events land in the right place.
+export function setHomeFolder(path: string | null): void {
+  if (path === activeHomeFolder) return;
+  if (stream) {
+    try {
+      stream.write(
+        JSON.stringify({
+          t: new Date().toISOString(),
+          level: 'info',
+          cat: 'app',
+          action: 'session:redirect',
+          detail: { to: path ?? '(userData)' },
+        }) + '\n',
+      );
+    } catch {}
+    try { stream.end(); } catch {}
+    stream = null;
+  }
+  activeHomeFolder = path;
+  initLogger();
+}
+
 // Open the session log file. Safe to call once at startup; subsequent calls are
-// no-ops. Never throws — logging must not be able to crash the app.
-export function initLogger(): void {
+// no-ops (unless stream was explicitly closed by setHomeFolder). Never throws.
+export function initLogger(homeFolder?: string): void {
+  if (homeFolder !== undefined) activeHomeFolder = homeFolder;
   if (stream) return;
   try {
     const dir = logsDir();

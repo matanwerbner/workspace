@@ -80,6 +80,9 @@ export const api = {
   codeServerStatus: (opts?: { binPath?: string }) => bridge().codeServerStatus(opts),
 
   // Workspace export/import
+  workspaceInitHomeFolder: (name: string) => bridge().workspaceInitHomeFolder(name),
+  workspaceSetActiveHomeFolder: (path: string | null) =>
+    bridge().workspaceSetActiveHomeFolder(path),
   workspaceExport: (workspace: Workspace) => bridge().workspaceExport(workspace),
   workspaceImport: () => bridge().workspaceImport(),
 

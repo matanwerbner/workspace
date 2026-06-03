@@ -1,7 +1,9 @@
 import { dialog, ipcMain, BrowserWindow } from 'electron';
 import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { seedRootsFromState } from './roots';
+import { setHomeFolder } from '../logger';
 
 function withWindow<T>(
   fn: (win: BrowserWindow | undefined) => Promise<T>,
@@ -37,7 +39,36 @@ function collectMissingPaths(workspace: Record<string, unknown>): string[] {
 }
 
 export function registerWorkspaceHandlers(): void {
-  ipcMain.handle('workspace:export', (_e, workspace: Record<string, unknown> & { name: string }) =>
+  ipcMain.handle('workspace:initHomeFolder', (_e, name: string) =>
+    withWindow(async (win) => {
+      const opts: Electron.OpenDialogOptions = {
+        properties: ['openDirectory', 'createDirectory'],
+        message: `Choose a home folder for "${name}"`,
+        buttonLabel: 'Select Folder',
+      };
+      const result = win
+        ? await dialog.showOpenDialog(win, opts)
+        : await dialog.showOpenDialog(opts);
+      if (result.canceled || result.filePaths.length === 0) return null;
+
+      const folderPath = result.filePaths[0];
+      await mkdir(join(folderPath, 'logs'), { recursive: true });
+      await mkdir(join(folderPath, 'memory'), { recursive: true });
+
+      const configPath = join(folderPath, 'workspace-config.md');
+      if (!existsSync(configPath)) {
+        await writeFile(
+          configPath,
+          `# ${name}\n\nCreated: ${new Date().toISOString()}\n`,
+          'utf8',
+        );
+      }
+
+      return folderPath;
+    }),
+  );
+
+  ipcMain.handle('workspace:export',(_e, workspace: Record<string, unknown> & { name: string }) =>
     withWindow(async (win) => {
       const opts: Electron.SaveDialogOptions = {
         defaultPath: `${workspace.name}.wsai.json`,
@@ -56,6 +87,10 @@ export function registerWorkspaceHandlers(): void {
       return result.filePath;
     }),
   );
+
+  ipcMain.handle('workspace:setActiveHomeFolder', (_e, path: string | null) => {
+    setHomeFolder(typeof path === 'string' && path.length > 0 ? path : null);
+  });
 
   ipcMain.handle('workspace:import', () =>
     withWindow(async (win) => {

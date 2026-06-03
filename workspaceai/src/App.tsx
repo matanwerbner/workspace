@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useAppStore } from './state/store';
+import { useAppStore, selectActiveWorkspace } from './state/store';
 import { Sidebar } from './shell/Sidebar';
 import { MainPane } from './shell/MainPane';
 import { SettingsModal } from './shell/SettingsModal';
@@ -22,10 +22,17 @@ export function App() {
   const hydrate = useAppStore((s) => s.hydrate);
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const setSettingsOpen = useAppStore((s) => s.setSettingsOpen);
+  const activeHomeFolder = useAppStore((s) => selectActiveWorkspace(s)?.homeFolder ?? null);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  // Keep the main-process log directory in sync with the active workspace's
+  // homeFolder so session logs land in the workspace folder rather than userData.
+  useEffect(() => {
+    void api.workspaceSetActiveHomeFolder(activeHomeFolder);
+  }, [activeHomeFolder]);
 
   useEffect(() => {
     window.__flushAppState = () => useAppStore.getState().flush();

@@ -198,14 +198,22 @@ function buildMenu(): void {
 }
 
 app.whenReady().then(() => {
-  initLogger();
+  // Seed the log directory from the active workspace's homeFolder (if set)
+  // so session logs land there from the very first event.
+  const persistedState = getPersistedAppState();
+  const activeWs = Array.isArray(persistedState?.workspaces)
+    ? (persistedState.workspaces as Array<{ id: string; homeFolder?: string }>).find(
+        (w) => w.id === persistedState.activeWorkspaceId,
+      )
+    : undefined;
+  initLogger(activeWs?.homeFolder ?? undefined);
   registerCsp();
   registerWebviewHardening();
   registerDocProtocol();
   registerIpcHandlers();
   // Re-anchor workspace roots from persisted state so restored views keep fs
   // access after a restart, without trusting renderer-supplied paths.
-  seedRootsFromState(getPersistedAppState());
+  seedRootsFromState(persistedState);
   buildMenu();
   createWindow();
 

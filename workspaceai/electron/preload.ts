@@ -116,6 +116,10 @@ const api = {
     ipcRenderer.invoke('codeServer:status', opts ?? {}),
 
   // Workspace export/import
+  workspaceInitHomeFolder: (name: string): Promise<string | null> =>
+    ipcRenderer.invoke('workspace:initHomeFolder', name),
+  workspaceSetActiveHomeFolder: (path: string | null): Promise<void> =>
+    ipcRenderer.invoke('workspace:setActiveHomeFolder', path),
   workspaceExport: (workspace: Workspace): Promise<string | null> =>
     ipcRenderer.invoke('workspace:export', workspace),
   workspaceImport: (): Promise<{ workspace: Workspace; missingPaths: string[] } | null> =>
