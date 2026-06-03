@@ -16,6 +16,7 @@ const tools: AiTool[] = [
       },
       required: ['command'],
     },
+    alwaysAllow: true,
   },
 ];
 
