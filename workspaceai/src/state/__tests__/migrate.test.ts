@@ -152,6 +152,12 @@ describe('workspace export/import serialization', () => {
     expect(imported.chatByViewId.v1).toBeUndefined();
   });
 
+  it('does not copy homeFolder to the duplicate', () => {
+    const ws = { ...sampleWorkspace(), homeFolder: '/some/folder' };
+    const clone = cloneWorkspaceWithNewIds(ws, 'clone');
+    expect(clone.homeFolder).toBeUndefined();
+  });
+
   it('produces a deep copy: mutating the clone does not affect the source', () => {
     const ws = sampleWorkspace();
     const imported = cloneWorkspaceWithNewIds(ws, 'copy');

@@ -1,5 +1,5 @@
 {
-  "name": "workspaceai",
+  "name": "orbit",
   "version": "0.1.0",
   "private": true,
   "description": "Container app for views with dedicated AI consoles",
@@ -18,7 +18,7 @@
   },
   "build": {
     "appId": "com.workspaceai.app",
-    "productName": "WorkspaceAI",
+    "productName": "Orbit",
     "directories": {
       "output": "dist"
     },

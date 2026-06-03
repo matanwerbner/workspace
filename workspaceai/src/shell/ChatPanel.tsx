@@ -33,7 +33,7 @@ const MODEL_OPTIONS: { label: string; value: string }[] = [
 type ResponseFormat = 'markdown' | 'html' | 'image';
 
 function buildSystemPrompt(view: ViewInstance, context: string, format: ResponseFormat): string {
-  const parts = ['You are a helpful AI assistant integrated into WorkspaceAI.'];
+  const parts = ['You are a helpful AI assistant integrated into Orbit.'];
   switch (view.typeId) {
     case 'code':
       parts.push('You are helping the user write and understand code.');

@@ -1,5 +1,15 @@
 # WorkspaceAI — Development Guide
 
+## Development Workflow
+
+Use GSD for all bug fixes, feature requests, and planning work:
+
+- **Bug fix**: `/gsd-debug` to investigate, then `/gsd-execute-phase` to fix
+- **Feature request**: `/gsd-plan-phase` to plan, then `/gsd-execute-phase` to implement
+- **Planning**: `/gsd-discuss-phase` to align on approach before any implementation
+
+Do not implement bug fixes or features directly — always go through GSD so work is tracked, planned, and verifiable.
+
 ## Debugging Sessions
 
 When debugging any runtime issue or unexpected behavior, always check the session logs first:
@@ -36,3 +46,11 @@ Log entries follow the shape: `{ ts, level, category, action, detail }`.
 ## Testing
 
 Every code change or addition should be reflected in tests. Keep tests minimal — cover the new behavior, not every edge case.
+
+After every fix or feature implementation, run only the relevant tests before reporting the task as complete:
+
+```bash
+npm test -- <path-to-relevant-test-file>
+```
+
+Do not run the full suite — target only tests related to the changed code.

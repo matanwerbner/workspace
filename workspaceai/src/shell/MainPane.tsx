@@ -38,22 +38,28 @@ export function MainPane() {
   }, [activeViewId]);
 
   const chatPanelRef = useRef<ImperativePanelHandle>(null);
+  const isProgrammaticRef = useRef(false);
 
   // Sync chat panel collapse state imperatively so the view panel is never
   // unmounted/remounted when the user hides or shows the AI console.
   useEffect(() => {
     const panel = chatPanelRef.current;
     if (!panel) return;
+    isProgrammaticRef.current = true;
     if (!active || collapsed) {
       panel.collapse();
     } else if (panel.isCollapsed()) {
       panel.expand();
     }
+    // Reset after synchronous onLayout callbacks complete
+    requestAnimationFrame(() => {
+      isProgrammaticRef.current = false;
+    });
   }, [active, activeViewId, collapsed]);
 
   // Sync window title with active view
   useEffect(() => {
-    document.title = active ? `${active.name} — WorkspaceAI` : 'WorkspaceAI';
+    document.title = active ? `${active.name} — Orbit` : 'Orbit';
   }, [active]);
 
   return (
@@ -62,6 +68,7 @@ export function MainPane() {
         direction="vertical"
         onLayout={(sizes) => {
           if (!activeViewId) return;
+          if (isProgrammaticRef.current) return;
           const chatSize = sizes[1];
           if (typeof chatSize === 'number' && chatSize > 0) {
             setChatSizePct(activeViewId, chatSize);

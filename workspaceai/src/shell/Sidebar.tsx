@@ -8,6 +8,7 @@ import {
 import { getViewType } from '../views/registry';
 import { AddViewModal } from './AddViewModal';
 import { api } from '../ipc/client';
+import { OrbitLogo } from '../components/OrbitLogo';
 
 export function Sidebar() {
   const views = useAppStore(selectViews);
@@ -90,6 +91,16 @@ export function Sidebar() {
 
   const cancelWorkspaceRename = () => setRenamingWorkspace(false);
 
+  const onCreateWorkspace = () => {
+    setWorkspaceMenuOpen(false);
+    const name = `Workspace ${workspaces.length + 1}`;
+    api.workspaceInitHomeFolder(name).then((homeFolder) => {
+      createWorkspace(name, homeFolder ?? undefined);
+    }).catch((err: unknown) => {
+      console.error('Failed to create workspace:', err);
+    });
+  };
+
   const onDeleteWorkspace = async () => {
     if (!activeWorkspace) return;
     const ok = await api.confirm(`Delete workspace "${activeWorkspace.name}"? This cannot be undone.`);
@@ -113,7 +124,10 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <span className="app-title">WorkspaceAI</span>
+        <div className="app-brand">
+          <OrbitLogo className="app-logo" />
+          <span className="app-title">Orbit</span>
+        </div>
         <div className="sidebar-header-actions">
           <button
             className="btn-icon"
@@ -175,7 +189,7 @@ export function Sidebar() {
             <div className="workspace-menu">
               <button
                 className="workspace-menu-item"
-                onClick={() => { createWorkspace(); setWorkspaceMenuOpen(false); }}
+                onClick={onCreateWorkspace}
               >
                 <span className="workspace-menu-item-icon">+</span>
                 New workspace

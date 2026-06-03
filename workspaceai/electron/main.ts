@@ -98,7 +98,7 @@ function createWindow(): void {
     height: 900,
     minWidth: 960,
     minHeight: 600,
-    title: 'WorkspaceAI',
+    title: 'Orbit',
     titleBarStyle: 'hiddenInset',
     backgroundColor: '#1a1a1a',
     show: false,

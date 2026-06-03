@@ -28,6 +28,7 @@ export interface ChatViewState {
 export interface Workspace {
   id: string;
   name: string;
+  homeFolder?: string;
   views: ViewInstance[];
   chatByViewId: Record<string, ChatMessage[]>;
   chatStateByViewId: Record<string, ChatViewState>;

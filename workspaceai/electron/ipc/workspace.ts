@@ -1,5 +1,5 @@
-import { dialog, ipcMain, BrowserWindow } from 'electron';
-import { existsSync } from 'node:fs';
+import { app, dialog, ipcMain, BrowserWindow } from 'electron';
+import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { registerRoot, seedRootsFromState } from './roots';
@@ -52,6 +52,27 @@ export function registerWorkspaceHandlers(): void {
       if (result.canceled || result.filePaths.length === 0) return null;
 
       const folderPath = result.filePaths[0];
+
+      // Prevent using the app's own source/resource directory as a workspace
+      // home — writing logs and memory files inside the project root causes
+      // Vite's file watcher to trigger page reloads on every log write.
+      try {
+        const appRoot = realpathSync(app.getAppPath());
+        const chosen = realpathSync(folderPath);
+        if (chosen === appRoot || chosen.startsWith(appRoot + '/')) {
+          await dialog.showMessageBox(win ?? BrowserWindow.getFocusedWindow()!, {
+            type: 'error',
+            title: 'Invalid folder',
+            message: 'Cannot use the application directory as a workspace home folder. Please choose a different location.',
+            buttons: ['OK'],
+          });
+          return null;
+        }
+      } catch {
+        // realpathSync can fail on non-existent paths; skip the guard and let
+        // mkdir below surface any real I/O error.
+      }
+
       await mkdir(join(folderPath, 'logs'), { recursive: true });
       await mkdir(join(folderPath, 'memory'), { recursive: true });
 

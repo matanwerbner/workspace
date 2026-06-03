@@ -27,6 +27,13 @@ export default defineConfig({
     define: {
       global: 'globalThis',
     },
+    server: {
+      watch: {
+        // Ignore runtime-written directories so writes to workspace logs/,
+        // memory/, and workspace-config.md never trigger a page reload.
+        ignored: ['**/logs/**', '**/memory/**', '**/workspace-config.md'],
+      },
+    },
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'index.html') },

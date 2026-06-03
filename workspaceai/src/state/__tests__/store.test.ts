@@ -167,6 +167,16 @@ describe('createWorkspace', () => {
     useAppStore.getState().createWorkspace('  Beta  ');
     expect(useAppStore.getState().workspaces[0].name).toBe('Beta');
   });
+
+  it('stores homeFolder when provided', () => {
+    useAppStore.getState().createWorkspace('MyWS', '/home/user/my-workspace');
+    expect(useAppStore.getState().workspaces[0].homeFolder).toBe('/home/user/my-workspace');
+  });
+
+  it('leaves homeFolder undefined when not provided', () => {
+    useAppStore.getState().createWorkspace('MyWS');
+    expect(useAppStore.getState().workspaces[0].homeFolder).toBeUndefined();
+  });
 });
 
 describe('switchWorkspace', () => {

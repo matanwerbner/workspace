@@ -3,7 +3,7 @@ import '@xterm/xterm/css/xterm.css';
 import { selectActiveViewId, useAppStore } from '../../state/store';
 import type { ViewInstance } from '../types';
 import type { TerminalViewConfig } from './types';
-import { getOrCreateSession, getSession } from './sessionCache';
+import { fitIfVisible, getOrCreateSession, getSession } from './sessionCache';
 
 export function TerminalView({ instance }: { instance: ViewInstance<TerminalViewConfig> }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,6 +40,19 @@ export function TerminalView({ instance }: { instance: ViewInstance<TerminalView
       session.terminal.refresh(0, session.terminal.rows - 1);
     });
   }, [isActive, instance.id]);
+
+  // Refit when the container is resized (panel drag, window resize).
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      const session = getSession(instance.id);
+      if (!session) return;
+      fitIfVisible(session);
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [instance.id]);
 
   return (
     <div className="terminal-view">

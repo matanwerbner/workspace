@@ -55,6 +55,19 @@ button {
   -webkit-app-region: drag;
 }
 
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.app-logo {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  color: var(--fg-0);
+}
+
 .app-title {
   font-weight: 600;
   font-size: 14px;
