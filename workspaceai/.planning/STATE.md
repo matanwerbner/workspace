@@ -26,6 +26,12 @@ progress:
 - [ ] 01-02 — homeFolder root-registration gap fix
 - [ ] 01-03 — Bridge plumbing + ChatPanel wiring
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260603-wtv | Fix run-command tool confirmation rendering in AI chat view | 2026-06-03 | 4ea91c9 | [260603-wtv-fix-run-command-tool-confirmation-render](./quick/260603-wtv-fix-run-command-tool-confirmation-render/) |
+
 ## Last Updated
 
-2026-06-03
+2026-06-03 - Completed quick task 260603-wtv: Fix run-command tool confirmation rendering in AI chat view
