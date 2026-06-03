@@ -45,6 +45,8 @@ interface AppStore {
   settings: AppSettings;
   // View context (not persisted — rebuilt at runtime)
   viewContextByViewId: Record<string, string>;
+  // Transient: which views currently have an active LLM stream or pending approval
+  busyViewIds: Set<string>;
   // Transient: absolute paths missing after the most recent workspace import.
   lastImportMissingPaths: string[];
 
