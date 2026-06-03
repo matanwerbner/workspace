@@ -1,4 +1,4 @@
-import { ipcMain, dialog, BrowserWindow } from 'electron';
+import { ipcMain } from 'electron';
 import * as pty from 'node-pty';
 import { exec } from 'node:child_process';
 import { homedir } from 'node:os';
@@ -122,23 +122,6 @@ export function registerTerminalHandlers(): void {
       { cwd, command }: { cwd?: string; command: string },
     ): Promise<{ stdout: string; stderr: string; code: number }> => {
       const workDir = cwd ?? homedir();
-      // Arbitrary shell command from the renderer/AI — gate behind explicit user
-      // confirmation before running it on the host.
-      const win = BrowserWindow.getFocusedWindow() ?? undefined;
-      const opts: Electron.MessageBoxOptions = {
-        type: 'warning',
-        buttons: ['Cancel', 'Run command'],
-        defaultId: 0,
-        cancelId: 0,
-        message: 'Run shell command?',
-        detail: `${command}\n\nWorking directory: ${workDir}`,
-      };
-      const { response } = win
-        ? await dialog.showMessageBox(win, opts)
-        : await dialog.showMessageBox(opts);
-      if (response !== 1) {
-        return { stdout: '', stderr: 'Command cancelled by user', code: 1 };
-      }
       return new Promise((resolve) => {
         exec(
           command,
