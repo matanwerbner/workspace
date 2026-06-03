@@ -1007,7 +1007,7 @@ button {
 .terminal-inset {
   flex: 1;
   min-height: 0;
-  padding: 8px 20px 4px;
+  padding: 200px 20px;
   display: flex;
   flex-direction: column;
 }
