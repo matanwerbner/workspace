@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(npm view *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npm test -- *)",
+      "Bash(screencapture -x *)"
+    ]
+  }
+}

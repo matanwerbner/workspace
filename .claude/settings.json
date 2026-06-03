@@ -1,4 +1,16 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(npm view *)",
+      "Bash(npx vitest run *)",
+      "Bash(npm run typecheck:web *)",
+      "Bash(npm run typecheck:node *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(npm test -- *)",
+      "Bash(screencapture *)"
+    ]
+  },
   "hooks": {
     "Notification": [
       {

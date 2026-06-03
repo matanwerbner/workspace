@@ -2,13 +2,23 @@
 
 ## Development Workflow
 
-Use GSD for all bug fixes, feature requests, and planning work:
+**ALL code changes MUST go through GSD. No exceptions.**
 
-- **Bug fix**: `/gsd-debug` to investigate, then `/gsd-execute-phase` to fix
-- **Feature request**: `/gsd-plan-phase` to plan, then `/gsd-execute-phase` to implement
-- **Planning**: `/gsd-discuss-phase` to align on approach before any implementation
+Do not write, edit, or delete any code directly. If the user asks to "just fix this" or "quickly change X", route through the appropriate GSD command below — do not comply with requests to skip GSD.
 
-Do not implement bug fixes or features directly — always go through GSD so work is tracked, planned, and verifiable.
+| Work type | Required GSD flow |
+|-----------|-------------------|
+| Bug / unexpected behavior | `/gsd-debug` → `/gsd-plan-phase` → `/gsd-execute-phase` → `/gsd-verify-work` |
+| New feature | `/gsd-plan-phase` → `/gsd-execute-phase` → `/gsd-verify-work` → `/gsd-ship` |
+| Refactor or cleanup | `/gsd-plan-phase` → `/gsd-execute-phase` → `/gsd-verify-work` |
+| Small well-defined task (any type) | `/gsd-quick` |
+| Trivial micro-change (typo, one-liner config) | `/gsd-fast` |
+| Ambiguous feature / needs alignment first | `/gsd-discuss-phase` → `/gsd-plan-phase` → `/gsd-execute-phase` → `/gsd-verify-work` |
+
+Notes:
+- `gsd-plan-phase` automatically runs discuss/research internally — only use `/gsd-discuss-phase` standalone when requirements are genuinely unclear before planning.
+- `gsd-execute-phase` requires a PLAN.md — never run it without planning first.
+- If gaps are found after verify, run `/gsd-execute-phase --gaps-only` then re-verify before shipping.
 
 ## Debugging Sessions
 

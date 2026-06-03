@@ -1,0 +1,7 @@
+{"t":"2026-06-03T20:15:12.852Z","level":"info","cat":"app","action":"session:start","detail":{"sessionId":"2026-06-03T20-15-12-851Z-75560","version":"0.1.0","electron":"31.7.7","platform":"darwin","packaged":false}}
+{"t":"2026-06-03T20:15:13.284Z","level":"info","cat":"ipc","action":"store:get","detail":{"args":["appState"]}}
+{"t":"2026-06-03T20:15:13.285Z","level":"info","cat":"ipc","action":"store:get:ok","detail":{"ms":1,"result":{"schemaVersion":2,"workspaces":[{"id":"w_mpyembf4_qxaw8y","name":"Workspace 1","views":"…","chatByViewId":"…","chatStateByViewId":"…","activeViewId":"v_mpyhlap9_5y54wx"},{"id":"w_mpyhs0o1_7nlipz","name":"Workspace 2","homeFolder":"/Users/matanw/projects/workspace","views":"…","chatByViewId":"…","chatStateByViewId":"…","activeViewId":"v_mpyhv0gh_a2r8bv"}],"activeWorkspaceId":"w_mpyhs0o1_7nlipz","settings":{"model":"claude-sonnet-4-6","maxTokens":4096,"htmlResponses":true},"viewTypeUsage":{}}}}
+{"t":"2026-06-03T20:15:13.285Z","level":"info","cat":"ipc","action":"ai:hasKey","detail":{"args":[]}}
+{"t":"2026-06-03T20:15:13.285Z","level":"info","cat":"ipc","action":"ai:hasKey:ok","detail":{"ms":0,"result":true}}
+{"t":"2026-06-03T20:15:13.285Z","level":"info","cat":"ipc","action":"workspace:setActiveHomeFolder","detail":{"args":[null]}}
+{"t":"2026-06-03T20:15:13.285Z","level":"info","cat":"app","action":"session:redirect","detail":{"to":"(userData)"}}

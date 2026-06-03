@@ -75,7 +75,7 @@ export function MainPane() {
           }
         }}
       >
-        <Panel minSize={30}>
+        <Panel minSize={20}>
           <div className="main-view-area">
             {!active && (
               <div className="placeholder">
@@ -108,7 +108,7 @@ export function MainPane() {
           collapsedSize={0}
           defaultSize={active && !collapsed ? sizePct : 0}
           minSize={15}
-          maxSize={50}
+          maxSize={80}
           onCollapse={() => {
             if (activeViewId) setChatCollapsed(activeViewId, true);
           }}

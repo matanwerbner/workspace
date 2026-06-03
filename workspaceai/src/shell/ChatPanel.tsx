@@ -259,11 +259,24 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
   const cancelledRef = useRef(false);
   // View ids the user has chosen to always allow tool calls for (session only).
   const alwaysAllowRef = useRef<Set<string>>(new Set());
+  // Whether the scroll container is at (or near) the bottom — used to decide auto-scroll.
+  const isAtBottomRef = useRef(true);
 
-  // Scroll to bottom whenever messages change (including streaming updates)
+  // Track whether the user has scrolled away from the bottom.
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    const onScroll = () => {
+      isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 64;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // Scroll to bottom whenever messages change, but only if already at the bottom.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && isAtBottomRef.current) el.scrollTop = el.scrollHeight;
   }, [messages, pendingApproval]);
 
   // Preload workspace memory index when homeFolder changes (avoids extra IPC round trip inside send)

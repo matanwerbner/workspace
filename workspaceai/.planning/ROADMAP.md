@@ -132,3 +132,20 @@ Plans:
 - [ ] 04-03-PLAN.md — Rewrite README for Orbit + fix the CLAUDE.md log-field inaccuracy
 
 **Status:** Planned
+
+## Phase 06: Terminal Scrollback Persistence Across App Sessions
+
+**Goal:** Persist each terminal view's output buffer (scrollback) to the workspace state and restore it when the app is relaunched, so users see their previous terminal history on next open.
+
+**Scope:**
+
+- Add `scrollback?: string` to `TerminalViewConfig`
+- `TerminalView` saves `outputBuf` to `instance.config.scrollback` via a debounced `updateViewConfig` call (2 s) and a synchronous final save on component unmount
+- On mount, if `instance.config.scrollback` exists, replay it into xterm before the new shell starts, preceded by a dim ANSI separator (`\x1b[2m--- previous session ---\x1b[0m`)
+- Initialize local `outputBuf` with the restored scrollback so AI context includes history
+- The existing Zustand store debounce (200 ms) and `before-quit` flush guarantee the scrollback is on disk within ~2 s of the last keystroke
+- Buffer size capped at the existing `OUTPUT_LIMIT` constant (3 000 chars) — same limit already used for the AI context string
+
+**Requirements:** TPERSIST-01, TPERSIST-02, TPERSIST-03
+
+**Status:** Pending
