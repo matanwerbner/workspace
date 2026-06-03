@@ -22,12 +22,12 @@ describe('toolLabel', () => {
   });
 
   describe('unknown tool fallback', () => {
-    it('humanizes append_to_note as "Append to note…" when active', () => {
-      expect(toolLabel('append_to_note')).toBe('Append to note…');
+    it('humanizes an unknown tool like "do_something" as "Do something…" when active', () => {
+      expect(toolLabel('do_something')).toBe('Do something…');
     });
 
-    it('humanizes append_to_note as "Append to note" when done', () => {
-      expect(toolLabel('append_to_note', 'done')).toBe('Append to note');
+    it('humanizes an unknown tool like "do_something" as "Do something" when done', () => {
+      expect(toolLabel('do_something', 'done')).toBe('Do something');
     });
   });
 });
