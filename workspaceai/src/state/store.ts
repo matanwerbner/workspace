@@ -25,10 +25,11 @@ const defaultChatState = (): ChatViewState => ({
   sizePct: DEFAULT_CHAT_PCT,
 });
 
-function makeWorkspace(name: string): Workspace {
+function makeWorkspace(name: string, homeFolder?: string): Workspace {
   return {
     id: makeId('w'),
     name,
+    homeFolder,
     views: [],
     chatByViewId: {},
     chatStateByViewId: {},
@@ -45,8 +46,6 @@ interface AppStore {
   settings: AppSettings;
   // View context (not persisted — rebuilt at runtime)
   viewContextByViewId: Record<string, string>;
-  // Transient: which views currently have an active LLM stream or pending approval
-  busyViewIds: Set<string>;
   // Transient: absolute paths missing after the most recent workspace import.
   lastImportMissingPaths: string[];
 
@@ -73,7 +72,7 @@ interface AppStore {
 
   setViewContext: (viewId: string, context: string) => void;
 
-  createWorkspace: (name?: string) => void;
+  createWorkspace: (name?: string, homeFolder?: string) => void;
   switchWorkspace: (id: string) => void;
   renameWorkspace: (id: string, name: string) => void;
   duplicateWorkspace: (id: string) => void;
@@ -293,10 +292,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
       viewContextByViewId: { ...s.viewContextByViewId, [viewId]: context },
     })),
 
-  createWorkspace: (name) =>
+  createWorkspace: (name, homeFolder) =>
     set((s) => {
-      const ws = makeWorkspace(name?.trim() || `Workspace ${s.workspaces.length + 1}`);
-      log('workspace', 'create', { id: ws.id, name: ws.name });
+      const ws = makeWorkspace(
+        name?.trim() || `Workspace ${s.workspaces.length + 1}`,
+        homeFolder,
+      );
+      log('workspace', 'create', { id: ws.id, name: ws.name, homeFolder: ws.homeFolder });
       return {
         workspaces: [...s.workspaces, ws],
         activeWorkspaceId: ws.id,

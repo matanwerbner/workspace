@@ -64,6 +64,7 @@ export function migrate(raw: unknown): PersistedAppState {
       workspaces: [workspace],
       activeWorkspaceId: workspace.id,
       settings: { ...DEFAULT_SETTINGS },
+      viewTypeUsage: {},
     };
   }
 
@@ -110,5 +111,6 @@ export function snapshot(state: {
     workspaces: state.workspaces,
     activeWorkspaceId: state.activeWorkspaceId,
     settings: state.settings,
+    viewTypeUsage: {},
   };
 }

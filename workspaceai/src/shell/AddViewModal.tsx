@@ -26,7 +26,10 @@ export function AddViewModal({ onClose }: Props) {
     setBusy(typeId);
     try {
       const def = getViewType(typeId);
-      if (!def) return;
+      if (!def) {
+        setBusy(null);
+        return;
+      }
       const created = await def.createConfig();
       if (!created) {
         setBusy(null);
