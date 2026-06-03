@@ -2,6 +2,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { api } from '../../ipc/client';
 import { useAppStore } from '../../state/store';
+import { attachSession } from './attachSession';
 
 const OUTPUT_LIMIT = 3000;
 
@@ -87,32 +88,39 @@ export function getOrCreateSession(
     setViewContext(`Shell cwd: ${cwdLabel}\n\nRecent output:\n${clean}`);
   };
 
-  void (async () => {
-    const result = await api.terminalCreate({ cwd });
-    // If the session was disposed before the pty came up, kill the orphan.
-    if (!sessions.has(instanceId)) {
-      void api.terminalKill(result.termId);
-      return;
-    }
-    session.termId = result.termId;
-    fitIfVisible(session);
-
-    api.terminalOnData(result.termId, (data) => {
+  void attachSession({
+    viewId: instanceId,
+    cwd,
+    isDisposed: () => !sessions.has(instanceId),
+    reconnect: api.terminalReconnect,
+    create: api.terminalCreate,
+    kill: (termId) => void api.terminalKill(termId),
+    writeToTerminal: (data) => {
       terminal.write(data);
       outputBuf += data;
       updateContext(outputBuf);
-    });
-    api.terminalOnExit(result.termId, () =>
-      terminal.write('\r\n[Process exited]\r\n'),
-    );
-
-    terminal.onData((data) => {
-      if (session.termId) void api.terminalWrite(session.termId, data);
-    });
-    terminal.onResize(({ cols, rows }) => {
-      if (session.termId) void api.terminalResize(session.termId, cols, rows);
-    });
-  })();
+    },
+    onResolved: (termId) => {
+      session.termId = termId;
+      fitIfVisible(session);
+    },
+    wireListeners: (termId) => {
+      api.terminalOnData(termId, (data) => {
+        terminal.write(data);
+        outputBuf += data;
+        updateContext(outputBuf);
+      });
+      api.terminalOnExit(termId, () =>
+        terminal.write('\r\n[Process exited]\r\n'),
+      );
+      terminal.onData((data) => {
+        if (session.termId) void api.terminalWrite(session.termId, data);
+      });
+      terminal.onResize(({ cols, rows }) => {
+        if (session.termId) void api.terminalResize(session.termId, cols, rows);
+      });
+    },
+  });
 
   return session;
 }
