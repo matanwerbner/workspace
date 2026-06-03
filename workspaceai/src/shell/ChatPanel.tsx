@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Anthropic from '@anthropic-ai/sdk';
-import { selectChatMessages, selectViews, useAppStore } from '../state/store';
+import { selectChatMessages, selectViews, selectActiveWorkspace, useAppStore } from '../state/store';
 import { api, log } from '../ipc/client';
 import { renderMarkdown } from '../lib/markdown';
 import type { ChatMessage, ChatToolCall } from '../state/types';
 import { getViewType } from '../views/registry';
 import type { AiTool, ViewInstance } from '../views/types';
 import { makeId } from '../lib/uid';
+import { GLOBAL_MEMORY_TOOLS, shouldBypassApproval, buildMemorySection } from './memory';
 
 interface Props {
   viewId: string;
@@ -241,11 +242,13 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
   const setSettings = useAppStore((s) => s.setSettings);
   const views = useAppStore(selectViews);
   const viewContext = useAppStore((s) => s.viewContextByViewId[viewId] ?? '');
+  const workspace = useAppStore(selectActiveWorkspace);
 
   const view = views.find((v) => v.id === viewId);
   const [draft, setDraft] = useState('');
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null);
+  const [memoryIndex, setMemoryIndex] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const accRef = useRef('');
   const draftRef = useRef(draft);
@@ -263,11 +266,24 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages, pendingApproval]);
 
+  // Preload workspace memory index when homeFolder changes (avoids extra IPC round trip inside send)
+  useEffect(() => {
+    const homeFolder = workspace?.homeFolder;
+    if (!homeFolder) {
+      setMemoryIndex(null);
+      return;
+    }
+    void api.memoryReadIndex(homeFolder).then((index) => setMemoryIndex(index));
+  }, [workspace?.homeFolder]);
+
   const isStreaming = streamingMsgId !== null;
 
   // Ask the user to approve/reject a tool call. Resolves with the decision.
-  const requestApproval = (block: Anthropic.ToolUseBlock): Promise<'approve' | 'reject'> => {
-    if (alwaysAllowRef.current.has(viewId)) return Promise.resolve('approve');
+  // allTools is the merged view + global tools list used for per-tool alwaysAllow checks.
+  const requestApproval = (block: Anthropic.ToolUseBlock, allTools: AiTool[]): Promise<'approve' | 'reject'> => {
+    if (shouldBypassApproval(block.name, alwaysAllowRef.current.has(viewId), allTools)) {
+      return Promise.resolve('approve');
+    }
     return new Promise((resolve) => {
       setPendingApproval({ id: block.id, name: block.name, input: block.input, resolve });
     });
@@ -289,6 +305,9 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
     const tools: AiTool[] = def?.tools ?? [];
     const executeTool = def?.executeTool;
     const extraContext = def?.getContext ? def.getContext(view) : '';
+
+    // Merge view-specific tools with global memory tools available in all view types
+    const allTools = [...tools, ...GLOBAL_MEMORY_TOOLS];
 
     const userMsg: ChatMessage = {
       id: makeId('m'),
@@ -343,14 +362,14 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
     }
     const working = rawWorking.slice(0, cutAt);
 
-    const baseContext = [viewContext, extraContext].filter(Boolean).join('\n\n');
+    const baseContext = [viewContext, extraContext, buildMemorySection(memoryIndex)].filter(Boolean).join('\n\n');
     const responseFormat: ResponseFormat = settings.htmlResponses ? 'html' : 'markdown';
     const systemBase = buildSystemPrompt(view, baseContext, responseFormat);
     const systemPrompt = settings.systemPromptOverride
       ? `${systemBase}\n\n${settings.systemPromptOverride}`
       : systemBase;
 
-    const sdkTools: Anthropic.Tool[] = tools.map((t) => ({
+    const sdkTools: Anthropic.Tool[] = allTools.map((t) => ({
       name: t.name,
       description: t.description,
       input_schema: t.input_schema as Anthropic.Tool.InputSchema,
@@ -444,7 +463,7 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
               : undefined,
         });
 
-        if (result.stopReason !== 'tool_use' || toolUseBlocks.length === 0 || !executeTool) {
+        if (result.stopReason !== 'tool_use' || toolUseBlocks.length === 0) {
           completed = true;
           break;
         }
@@ -460,7 +479,7 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
         for (let i = 0; i < toolUseBlocks.length; i++) {
           if (cancelledRef.current) break;
           const block = toolUseBlocks[i];
-          const decision = await requestApproval(block);
+          const decision = await requestApproval(block, allTools);
           if (cancelledRef.current) break;
 
           log('chat', 'tool:decision', {
@@ -480,11 +499,36 @@ export function ChatPanel({ viewId, onToggleCollapse, onOpenSettings }: Props) {
             updateMessage(viewId, assistantMsgId, { content: text, toolCalls: [...recorded] });
             const toolStarted = Date.now();
             try {
-              res = await executeTool(
-                block.name,
-                block.input as Record<string, unknown>,
-                view,
-              );
+              if (block.name === 'read_memory') {
+                const { topic } = block.input as { topic: string };
+                res = workspace?.homeFolder
+                  ? (await api.memoryReadEntry(workspace.homeFolder, topic)) ??
+                    `No memory entry found for "${topic}".`
+                  : 'Memory not available: workspace has no home folder set.';
+              } else if (block.name === 'write_memory') {
+                const { name, description, type, content } = block.input as {
+                  name: string;
+                  description: string;
+                  type: string;
+                  content: string;
+                };
+                if (workspace?.homeFolder) {
+                  await api.memoryWriteEntry(workspace.homeFolder, name, description, type, content);
+                  res = `Memory entry "${name}" saved.`;
+                  // Refresh cached index after write
+                  void api.memoryReadIndex(workspace.homeFolder).then((index) => setMemoryIndex(index));
+                } else {
+                  res = 'Memory not available: workspace has no home folder set.';
+                }
+              } else if (executeTool) {
+                res = await executeTool(
+                  block.name,
+                  block.input as Record<string, unknown>,
+                  view,
+                );
+              } else {
+                res = `Unknown tool: ${block.name}`;
+              }
               log('chat', 'tool:result', {
                 viewId,
                 tool: block.name,
