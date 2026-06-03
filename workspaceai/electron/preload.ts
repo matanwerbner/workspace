@@ -122,6 +122,21 @@ const api = {
     ipcRenderer.invoke('workspace:initHomeFolder', name),
   workspaceSetActiveHomeFolder: (path: string | null): Promise<void> =>
     ipcRenderer.invoke('workspace:setActiveHomeFolder', path),
+
+  // Memory
+  memoryReadIndex: (homeFolder: string): Promise<string | null> =>
+    ipcRenderer.invoke('memory:readIndex', homeFolder),
+  memoryReadEntry: (homeFolder: string, topic: string): Promise<string | null> =>
+    ipcRenderer.invoke('memory:readEntry', homeFolder, topic),
+  memoryWriteEntry: (
+    homeFolder: string,
+    name: string,
+    description: string,
+    type: string,
+    content: string,
+  ): Promise<void> =>
+    ipcRenderer.invoke('memory:writeEntry', homeFolder, name, description, type, content),
+
   workspaceExport: (workspace: Workspace): Promise<string | null> =>
     ipcRenderer.invoke('workspace:export', workspace),
   workspaceImport: (): Promise<{ workspace: Workspace; missingPaths: string[] } | null> =>
