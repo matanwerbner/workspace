@@ -49,6 +49,30 @@ Plans:
 
 **Status:** Pending
 
+## Phase 05: Terminal Session Reconnect Across Page Reloads
+
+**Goal:** Preserve pty processes across Vite full page reloads in dev mode — renderer reconnects to the existing shell session instead of spawning a new one and orphaning the old process.
+
+**Scope:**
+- Main process keeps a `viewId → {termId, pty, outputBuffer}` registry in `terminal.ts`
+- New `terminal:reconnect` IPC handler: returns existing `termId` + buffered output for a given `viewId`, or `null` if none
+- `terminal:create` registers the new pty under the `viewId` key
+- `terminal:kill` removes both the `termId` and `viewId` entries
+- `sessionCache.ts` calls `terminalReconnect(instanceId)` before spawning a new pty — attaches to the live process and replays buffered output if one exists
+- Scrollback buffer capped at a configurable size (default 50 KB) in the main process
+- Orphaned pty cleanup: when `terminal:reconnect` is called for a `viewId` that has a dead pty (exited), the entry is removed and `null` is returned
+- No change to production build behavior — reconnect is a dev-mode concern but the code path is always present
+
+**Requirements:** TERM-01, TERM-02, TERM-03, TERM-04
+
+**Plans:** 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Main-process viewId registry, viewId-aware create, `terminal:reconnect` handler, 50 KB buffer cap, preload + typed-client plumbing
+- [ ] 05-02-PLAN.md — Renderer reconnect-before-create: `attachSession` orchestrator + tests, `getOrCreateSession` wiring
+
+**Status:** Pending
+
 ## Phase 04: Code Quality Pass and README Update
 
 **Goal:** Remove dead code, enforce consistent patterns, and update README and docs to accurately reflect the current state of the app.
