@@ -1,0 +1,14 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#1a1a1a"/>
+  <!-- Orbit rings scaled to 512x512 (center 256,256, scale factor ~4.5) -->
+  <path d="M 256 75 A 181 181 0 1 1 75 256"
+        fill="none" stroke="white" stroke-width="36" stroke-linecap="round"/>
+  <path d="M 256 117 A 139 139 0 1 1 117 256"
+        fill="none" stroke="white" stroke-width="31" stroke-linecap="round"
+        transform="rotate(40 256 256)" opacity="0.55"/>
+  <path d="M 256 159 A 97 97 0 1 1 159 256"
+        fill="none" stroke="white" stroke-width="26" stroke-linecap="round"
+        transform="rotate(100 256 256)" opacity="0.3"/>
+  <circle cx="256" cy="256" r="31" fill="white"/>
+  <circle cx="75"  cy="256" r="26" fill="white" opacity="0.7"/>
+</svg>
