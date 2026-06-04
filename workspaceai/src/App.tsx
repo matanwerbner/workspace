@@ -5,12 +5,12 @@ import { MainPane } from './shell/MainPane';
 import { SettingsModal } from './shell/SettingsModal';
 import { ErrorBoundary } from './shell/ErrorBoundary';
 import { api } from './ipc/client';
+import './views/claude-code';
 import './views/code';
+import './views/notepad';
 import './views/browser';
 import './views/pdf';
 import './views/terminal';
-import './views/notepad';
-import './views/claude-code';
 
 declare global {
   interface Window {
