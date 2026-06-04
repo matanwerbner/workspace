@@ -73,7 +73,7 @@ const api = {
   },
 
   // Terminal
-  terminalCreate: (opts: { cwd?: string; viewId?: string }): Promise<{ termId: string }> =>
+  terminalCreate: (opts: { cwd?: string; viewId?: string; command?: string }): Promise<{ termId: string }> =>
     ipcRenderer.invoke('terminal:create', opts),
   terminalReconnect: (viewId: string): Promise<{ termId: string; outputBuf: string } | null> =>
     ipcRenderer.invoke('terminal:reconnect', { viewId }),

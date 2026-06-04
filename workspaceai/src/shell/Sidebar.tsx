@@ -131,14 +131,6 @@ export function Sidebar() {
         <div className="sidebar-header-actions">
           <button
             className="btn-icon"
-            onClick={() => setShowAdd(true)}
-            title="Add view (⌘N)"
-            aria-label="Add view"
-          >
-            +
-          </button>
-          <button
-            className="btn-icon"
             onClick={() => setSettingsOpen(true)}
             title="Settings (⌘,)"
             aria-label="Settings"

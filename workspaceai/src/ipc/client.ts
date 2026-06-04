@@ -61,7 +61,7 @@ export const api = {
   aiOffChunk: (streamId: string) => bridge().aiOffChunk(streamId),
 
   // Terminal
-  terminalCreate: (opts: { cwd?: string; viewId?: string }) => bridge().terminalCreate(opts),
+  terminalCreate: (opts: { cwd?: string; viewId?: string; command?: string }) => bridge().terminalCreate(opts),
   terminalReconnect: (viewId: string) => bridge().terminalReconnect(viewId),
   terminalWrite: (termId: string, data: string) => bridge().terminalWrite(termId, data),
   terminalResize: (termId: string, cols: number, rows: number) =>

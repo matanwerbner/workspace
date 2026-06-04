@@ -19,6 +19,7 @@ Orbit is a multi-view container where each view comes with a resizable AI chat p
 | **Code** | Read, write, and search files inside the workspace folder |
 | **Browser** | Navigate pages, click elements, fill inputs, extract page text |
 | **Terminal** | Run shell commands and read the output |
+| **Claude Code** | Terminal that auto-launches the claude-code CLI |
 | **Document** | Read and reference PDF content |
 | **Notepad** | Read, write, and append to the note |
 

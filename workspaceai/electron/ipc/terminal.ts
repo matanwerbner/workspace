@@ -3,10 +3,50 @@ import * as pty from 'node-pty';
 import { exec } from 'node:child_process';
 import { homedir } from 'node:os';
 import { appendCapped } from '../../src/shell/termBuffer';
+import { accessSync, constants } from 'node:fs';
+import { join, isAbsolute } from 'node:path';
 
 const processes = new Map<string, pty.IPty>();
 const viewSessions = new Map<string, { termId: string; outputBuf: string }>();
 let nextId = 1;
+
+const EXTRA_PATH_DIRS = [
+  '/opt/homebrew/bin',
+  '/opt/homebrew/sbin',
+  '/usr/local/bin',
+  '/usr/bin',
+  join(process.env['HOME'] ?? '', '.npm-global/bin'),
+  join(process.env['HOME'] ?? '', '.local/bin'),
+  join(process.env['HOME'] ?? '', 'Library/npm/bin'),
+  join(process.env['HOME'] ?? '', '.nvm/versions/node/v22/bin'),
+  join(process.env['HOME'] ?? '', '.nvm/versions/node/v20/bin'),
+  join(process.env['HOME'] ?? '', '.nvm/versions/node/v18/bin'),
+  process.env['NVM_BIN'] ?? '',
+  '/opt/homebrew/opt/node/bin',
+];
+
+function searchDirs(): string[] {
+  const fromEnv = (process.env['PATH'] ?? '').split(':').filter(Boolean);
+  return [...new Set([...fromEnv, ...EXTRA_PATH_DIRS].filter(Boolean))];
+}
+
+function isExecutable(p: string): boolean {
+  try {
+    accessSync(p, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function resolveOnPath(name: string): string | null {
+  if (isAbsolute(name)) return isExecutable(name) ? name : null;
+  for (const dir of searchDirs()) {
+    const candidate = join(dir, name);
+    if (isExecutable(candidate)) return candidate;
+  }
+  return null;
+}
 
 export function disposeTerminals(): void {
   for (const p of processes.values()) {
@@ -17,19 +57,29 @@ export function disposeTerminals(): void {
 }
 
 export function registerTerminalHandlers(): void {
-  ipcMain.handle('terminal:create', (event, { cwd, viewId }: { cwd?: string; viewId?: string }) => {
+  ipcMain.handle('terminal:create', (event, { cwd, viewId, command }: { cwd?: string; viewId?: string; command?: string }) => {
     const termId = `term_${nextId++}`;
-    const shell =
-      process.platform === 'win32'
-        ? 'powershell.exe'
-        : (process.env['SHELL'] ?? '/bin/zsh');
 
-    const ptyProcess = pty.spawn(shell, [], {
+    let program: string;
+    if (command) {
+      const resolved = resolveOnPath(command);
+      if (!resolved) {
+        throw new Error('not_found');
+      }
+      program = resolved;
+    } else {
+      program =
+        process.platform === 'win32'
+          ? 'powershell.exe'
+          : (process.env['SHELL'] ?? '/bin/zsh');
+    }
+
+    const ptyProcess = pty.spawn(program, [], {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
       cwd: cwd ?? homedir(),
-      env: process.env as Record<string, string>,
+      env: { ...process.env, PATH: searchDirs().join(':') } as Record<string, string>,
     });
 
     if (viewId) {

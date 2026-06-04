@@ -4,13 +4,19 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { selectActiveViewId, useAppStore } from '../../state/store';
 import type { ViewInstance } from '../types';
-import type { TerminalViewConfig } from './types';
-import { attachSession } from './attachSession';
+import type { ClaudeCodeViewConfig } from './types';
+import { attachSession } from '../terminal/attachSession';
 import { api } from '../../ipc/client';
 
 const OUTPUT_LIMIT = 3000;
 
-export function TerminalView({ instance }: { instance: ViewInstance<TerminalViewConfig> }) {
+const NOT_FOUND_MSG =
+  '\r\n\x1b[1;33mclaude not found.\x1b[0m\r\n\r\n' +
+  'Install it with:\r\n' +
+  '  npm install -g @anthropic-ai/claude-code\r\n\r\n' +
+  'Then reopen this view.\r\n';
+
+export function ClaudeCodeView({ instance }: { instance: ViewInstance<ClaudeCodeViewConfig> }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isActive = useAppStore((s) => selectActiveViewId(s) === instance.id);
   const termRef = useRef<Terminal | null>(null);
@@ -48,13 +54,25 @@ export function TerminalView({ instance }: { instance: ViewInstance<TerminalView
     const cwdLabel = instance.config.cwd ?? '(home)';
     const setViewContext = (ctx: string) =>
       useAppStore.getState().setViewContext(instance.id, ctx);
-    setViewContext(`Shell cwd: ${cwdLabel}\nNo output yet.`);
+    setViewContext(`Claude Code in: ${cwdLabel}\nNo output yet.`);
 
     let outputBuf = '';
     const updateContext = (buf: string) => {
       const trimmed = buf.length > OUTPUT_LIMIT ? buf.slice(-OUTPUT_LIMIT) : buf;
       const clean = trimmed.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '').replace(/\r/g, '');
-      setViewContext(`Shell cwd: ${cwdLabel}\n\nRecent output:\n${clean}`);
+      setViewContext(`Claude Code in: ${cwdLabel}\n\nRecent output:\n${clean}`);
+    };
+
+    // Try to spawn claude-code directly. If not found, fall back to a shell
+    // and show an install message. Using command: means no shell wrapper.
+    let notFound = false;
+    const createFn = async (opts: { cwd?: string; viewId?: string }) => {
+      try {
+        return await api.terminalCreate({ ...opts, command: 'claude' });
+      } catch {
+        notFound = true;
+        return api.terminalCreate(opts); // fall back to plain shell
+      }
     };
 
     void attachSession({
@@ -62,7 +80,7 @@ export function TerminalView({ instance }: { instance: ViewInstance<TerminalView
       cwd: instance.config.cwd,
       isDisposed: () => disposedRef.current,
       reconnect: api.terminalReconnect,
-      create: api.terminalCreate,
+      create: createFn,
       kill: (termId) => void api.terminalKill(termId),
       writeToTerminal: (data) => {
         terminal.write(data);
@@ -71,7 +89,6 @@ export function TerminalView({ instance }: { instance: ViewInstance<TerminalView
       },
       onResolved: (termId) => {
         termIdRef.current = termId;
-        // The ResizeObserver below opens + fits once the container is sized.
       },
       wireListeners: (termId) => {
         api.terminalOnData(termId, (data) => {
@@ -88,16 +105,16 @@ export function TerminalView({ instance }: { instance: ViewInstance<TerminalView
         terminal.onResize(({ cols, rows }) => {
           if (termIdRef.current) void api.terminalResize(termIdRef.current, cols, rows);
         });
+
+        // Write install instructions if cli wasn't found
+        if (notFound) {
+          terminal.write(NOT_FOUND_MSG);
+        }
       },
     });
 
-    // Defer terminal.open() until the container has real dimensions. Opening
-    // into a 0x0 element leaves xterm's renderer stuck at zero size — it then
-    // renders blank until a real browser reflow (e.g. a manual window resize)
-    // forces a recompute. Writes before open() are buffered by xterm and shown
-    // when it opens. The observer lives inside this effect so it shares the
-    // terminal's lifecycle: a disposed terminal's observer is always
-    // disconnected before it can fire (avoids open()-after-dispose crashes).
+    // Defer terminal.open() until the container has real dimensions. The
+    // observer lives inside this effect so it shares the terminal's lifecycle.
     let opened = false;
     const observer = new ResizeObserver(() => {
       if (container.offsetWidth === 0 || container.offsetHeight === 0) return;

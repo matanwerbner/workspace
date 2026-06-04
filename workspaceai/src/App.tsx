@@ -10,6 +10,7 @@ import './views/browser';
 import './views/pdf';
 import './views/terminal';
 import './views/notepad';
+import './views/claude-code';
 
 declare global {
   interface Window {

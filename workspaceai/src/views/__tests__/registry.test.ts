@@ -123,3 +123,17 @@ describe('registerView — tools', () => {
     expect(getViewType(typeId)!.tools).toBeUndefined();
   });
 });
+
+describe('claude-code view registration', () => {
+  it('is registered with correct properties', async () => {
+    // Import the claude-code view to trigger registration
+    await import('../../views/claude-code');
+
+    const entry = getViewType('claude-code');
+    expect(entry).toBeDefined();
+    expect(entry!.typeId).toBe('claude-code');
+    expect(entry!.label).toBe('Claude Code');
+    expect(entry!.description).toBe('Terminal that auto-launches the claude-code CLI.');
+    expect(entry!.getContext).toBeDefined();
+  });
+});
